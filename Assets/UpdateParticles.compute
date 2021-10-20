@@ -1,0 +1,67 @@
+#pragma kernel CSMain
+
+struct Particle {
+    float3 pos;
+    float3 vel;
+    float4 color;
+};
+
+RWStructuredBuffer<Particle> Particles;
+float3 _PusherPosition;
+float timeDelta;
+float3 volume;
+
+float nrand(float2 uv)
+{
+    return frac(sin(dot(uv, float2(12.9898, 78.233))) * 43758.5453);
+}
+
+float2 GetGradient(float2 intPos, float t) {
+    float rand = nrand(intPos / 64.0);
+    
+    float angle = 6.283185 * rand + 4.0 * t * rand;
+    return float2(cos(angle), sin(angle));
+}
+
+
+float Pseudo3dNoise(float3 pos) {
+    float2 i = floor(pos.xy);
+    float2 f = pos.xy - i;
+    float2 blend = f * f * (3.0 - 2.0 * f);
+    float noiseVal = 
+        lerp(
+            lerp(
+                dot(GetGradient(i + float2(0, 0), pos.z), f - float2(0, 0)),
+                dot(GetGradient(i + float2(1, 0), pos.z), f - float2(1, 0)),
+                blend.x),
+            lerp(
+                dot(GetGradient(i + float2(0, 1), pos.z), f - float2(0, 1)),
+                dot(GetGradient(i + float2(1, 1), pos.z), f - float2(1, 1)),
+                blend.x),
+        blend.y
+    );
+    return noiseVal / 0.7; // normalize to about [-1..1]
+}
+
+[numthreads(64,1,1)]
+void CSMain (uint3 id : SV_DispatchThreadID) {
+    float3 position = Particles[id.x].pos;
+
+    /*float dist = distance(position, _PusherPosition);
+    dist = 2.0 - clamp(0.0, 2.0, dist);
+    
+    float3 push = normalize(position - _PusherPosition) * dist;*/
+
+    float noiseX = Pseudo3dNoise(position);
+    float noiseY = Pseudo3dNoise(position+float3(volume.x*2,0,0));
+    float noiseZ = Pseudo3dNoise(position+float3(0,volume.y*2,0));
+
+    float3 push = float3(noiseX,noiseY,noiseZ);
+    
+    Particles[id.x].vel -= Particles[id.x].vel*timeDelta;
+	Particles[id.x].vel += push*timeDelta;
+    
+    Particles[id.x].pos += Particles[id.x].vel*timeDelta;
+
+    //Particles[id.x].pos = clamp(Particles[id.x].pos,-volume,volume);
+}
