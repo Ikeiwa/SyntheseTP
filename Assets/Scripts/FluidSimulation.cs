@@ -7,6 +7,8 @@ public class FluidSimulation : MonoBehaviour
 {
     public int population;
     public Vector3 volume;
+    [Range(0.1f,10)]
+    public float simulationSpeed = 1;
 
     public Material material;
     public ComputeShader compute;
@@ -114,10 +116,10 @@ public class FluidSimulation : MonoBehaviour
         int kernel = compute.FindKernel("CSMain");
 
         compute.SetVector("_PusherPosition", Camera.main.transform.position);
-        compute.SetFloat("timeDelta",Time.deltaTime);
+        compute.SetFloat("timeDelta",Time.deltaTime/(1/ simulationSpeed));
         compute.Dispatch(kernel, Mathf.CeilToInt(population / 64f), 1, 1);
 
-        Graphics.DrawMeshInstancedIndirect(mesh, 0, material, bounds, argsBuffer,0,null,ShadowCastingMode.Off,false,gameObject.layer);
+        Graphics.DrawMeshInstancedIndirect(mesh, 0, material, bounds, argsBuffer,0,null,ShadowCastingMode.On,false,gameObject.layer);
     }
 
     private void OnDestroy() {
