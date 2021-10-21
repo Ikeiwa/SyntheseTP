@@ -8,7 +8,9 @@ public class LiquidFilter : MonoBehaviour
     public Material filterMaterial;
     public Material blurMaterial;
 
+    private Camera cam;
     private static readonly int Depth = Shader.PropertyToID("_Depth");
+    private static readonly int UnityMatrixIv = Shader.PropertyToID("UNITY_MATRIX_IV");
 
     void Start()
     {
@@ -18,6 +20,8 @@ public class LiquidFilter : MonoBehaviour
             enabled = false;
             return;
         }
+
+        cam = GetComponent<Camera>();
     }
 
     void OnRenderImage(RenderTexture source, RenderTexture destination)
@@ -25,7 +29,9 @@ public class LiquidFilter : MonoBehaviour
         RenderTexture bluredDepth = RenderTexture.GetTemporary(source.width, source.height, source.depth, GraphicsFormat.R16_SFloat);
         Graphics.Blit(source, bluredDepth, blurMaterial);
 
-        filterMaterial.SetTexture("_Depth",bluredDepth);
+
+        filterMaterial.SetMatrix(UnityMatrixIv, transform.localToWorldMatrix);
+        filterMaterial.SetTexture(Depth,bluredDepth);
         Graphics.Blit(source, destination, filterMaterial);
 
         RenderTexture.ReleaseTemporary(bluredDepth);

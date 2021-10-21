@@ -3,9 +3,6 @@ Shader "Hidden/DepthBlur"
     Properties
     {
         _MainTex ("Texture", 2D) = "white" {}
-    	_ParticleRadius ("Particle Radius",Float) = 0.05
-        _FilterSize ("Filter Size", Int) = 5
-        _MaxFilterSize("Max Filter Size", Int) = 25
     }
     SubShader
     {
@@ -17,6 +14,12 @@ Shader "Hidden/DepthBlur"
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
+
+            #define BSIGMA 0.1
+			#define MSIZE 15
+
+			const float kernel[MSIZE] = {0.031225216, 0.033322271, 0.035206333, 0.036826804, 0.038138565, 0.039104044, 0.039695028, 0.039894000, 0.039695028, 0.039104044, 0.038138565, 0.036826804, 0.035206333, 0.033322271, 0.031225216};
+
 
             #include "UnityCG.cginc"
 
@@ -41,94 +44,53 @@ Shader "Hidden/DepthBlur"
             }
 
             sampler2D _CameraDepthTexture;
-            float _ParticleRadius;
-            int _FilterSize;
-            int _MaxFilterSize;
 
-            const float thresholdRatio = 10.0;
-
-            float compute_weight2D(float2 r, float two_sigma2)
+            float normpdf(in float x, in float sigma)
             {
-                return exp(-dot(r, r) / two_sigma2);
+                return 0.39894 * exp(-0.5 * x * x / (sigma * sigma)) / sigma;
             }
 
-            float compute_weight1D(float r, float two_sigma2)
+            float normpdf3(in float3 v, in float sigma)
             {
-                return exp(-r * r / two_sigma2);
+                return 0.39894 * exp(-0.5 * dot(v, v) / (sigma * sigma)) / sigma;
             }
+
 
             float frag (v2f i) : SV_Target
             {
-                float2 blurRadius = 1.0 / _ScreenParams.xy;
-
                 float pixelDepth = tex2D(_CameraDepthTexture, i.uv).r;
-                pixelDepth = Linear01Depth(pixelDepth);
-                pixelDepth = pixelDepth * _ProjectionParams.z;
 				float finalDepth;
 
-                if (pixelDepth <= 0.0f || pixelDepth >= _ProjectionParams.z) {
+                return pixelDepth;
+
+                if (pixelDepth <= 0.0f || pixelDepth >= 1) {
                     finalDepth = pixelDepth;
                 }
                 else {
-                    float ratio = _ScreenParams.y / 2.0 / tan(45.0 / 2.0);
-                    float K = -_FilterSize * ratio * _ParticleRadius * 0.1f;
-                    int   filterSize = min(_MaxFilterSize, int(ceil(K / pixelDepth)));
-                    filterSize = _FilterSize;
-                    float sigma = filterSize / 3.0f;
-                    float two_sigma2 = 2.0f * sigma * sigma;
+                    const int kSize = (MSIZE - 1) / 2;
+                    finalDepth = 0;
 
-                    float threshold = _ParticleRadius * thresholdRatio;
-                    float sigmaDepth = threshold / 3.0f;
-                    float two_sigmaDepth2 = 2.0f * sigmaDepth * sigmaDepth;
-                     
-                    float4 f_tex = i.uv.xyxy;
-                    float2 r = float2(0, 0);
-                    float4 sum4 = float4(pixelDepth, 0, 0, 0);
-                    float4 wsum4 = float4(1, 0, 0, 0);
+                    float Z = 0.0;
 
-                    for (int x = 1; x <= 5; ++x) {
-                        r.x += blurRadius.x;
-                        f_tex.x += blurRadius.x;
-                        f_tex.z -= blurRadius.x;
-                        float4 f_tex1 = f_tex.xyxy;
-                        float4 f_tex2 = f_tex.zwzw;
+                    const float bZ = 1.0 / normpdf(0.0, BSIGMA);
 
-                        for (int y = 1; y <= 5; ++y) {
-	                        float4 w4_depth;
-	                        float4 sampleDepth;
-	                        r.y += blurRadius.y;
+                    for (int x = -kSize; x <= kSize; ++x)
+                    {
+                        for (int y = -kSize; y <= kSize; ++y)
+                        {
+                            float cc = tex2D(_CameraDepthTexture, i.uv + (float2(float(x), float(y)) / _ScreenParams.xy)).r;
+                            float factor = normpdf(cc - pixelDepth, BSIGMA) * bZ * kernel[kSize + y] * kernel[kSize + x];
+                            Z += factor;
+                            finalDepth += factor * cc;
 
-                            f_tex1.y += blurRadius.y;
-                            f_tex1.w -= blurRadius.y;
-                            f_tex2.y += blurRadius.y;
-                            f_tex2.w -= blurRadius.y;
-
-                            sampleDepth.x = tex2D(_CameraDepthTexture, f_tex1.xy).r;
-                            sampleDepth.y = tex2D(_CameraDepthTexture, f_tex1.zw).r;
-                            sampleDepth.z = tex2D(_CameraDepthTexture, f_tex2.xy).r;
-                            sampleDepth.w = tex2D(_CameraDepthTexture, f_tex2.zw).r;
-
-                            float4 rDepth = sampleDepth - pixelDepth;
-                            float4 w4_r = compute_weight2D(blurRadius * r, two_sigma2);
-                            w4_depth.x = compute_weight1D(rDepth.x, two_sigmaDepth2);
-                            w4_depth.y = compute_weight1D(rDepth.y, two_sigmaDepth2);
-                            w4_depth.z = compute_weight1D(rDepth.z, two_sigmaDepth2);
-                            w4_depth.w = compute_weight1D(rDepth.w, two_sigmaDepth2);
-
-                            sum4 += sampleDepth * w4_r * w4_depth;
-                            wsum4 += w4_r * w4_depth;
                         }
                     }
 
-                    float2 filterVal;
-                    filterVal.x = dot(sum4, float4(1, 1, 1, 1));
-                    filterVal.y = dot(wsum4, float4(1, 1, 1, 1));
-
-                    finalDepth = filterVal.x / filterVal.y;
+                    finalDepth /= Z;
                 }
 
 
-                return finalDepth / _ProjectionParams.z;
+                return finalDepth;
             }
             ENDCG
         }
