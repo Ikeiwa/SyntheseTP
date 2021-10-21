@@ -3,6 +3,7 @@ Shader "Liquid/Fluid Particle" {
     {
         _MainTex ("Texture", 2D) = "white" {}
     	_Elasticity ("Elasticity", Float) = 5
+		_ParticleRadius("Particle Radius",Float) = 0.05
     }
     SubShader {
         Tags {"Queue"="Geometry" "RenderType"="Opaque"}
@@ -31,6 +32,7 @@ Shader "Liquid/Fluid Particle" {
 		StructuredBuffer<Particle> Particles;
 		sampler2D _MainTex;
 		float _Elasticity;
+		float _ParticleRadius;
 
 		v2f vert(appdata_base i, uint instanceID: SV_InstanceID) {
 			v2f o;
@@ -95,7 +97,7 @@ Shader "Liquid/Fluid Particle" {
 			clip(col.a - 0.01f);
 
 			o.color = col;
-			o.depth = (i.screenPos.z + col.a * 0.1f) / i.screenPos.w;
+			o.depth = (i.screenPos.z + col.a * _ParticleRadius) / i.screenPos.w;
 
 			return o;
 		}

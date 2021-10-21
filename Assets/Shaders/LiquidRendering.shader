@@ -43,8 +43,6 @@ Shader "Liquid/Liquid Rendering"
 
              sampler2D _MainTex;
              sampler2D _LiquidTex;
-             Texture2D _CameraDepthTexture;
-             float4 _CameraDepthTexture_TexelSize;
 
              Texture2D _Depth;
              float4 _Depth_TexelSize;
@@ -62,7 +60,7 @@ Shader "Liquid/Liquid Rendering"
                  float rawDepth = _Depth.Load(int3(pos, 0)).r;
                  float2 uv = pos * _Depth_TexelSize.xy;
                  float3 ray = rayFromScreenUV(uv, unity_CameraInvProjection);
-                 return ray * Linear01Depth(rawDepth);
+                 return ray * /*Linear01Depth(*/rawDepth/*)*/;
              }
 
              float4 fragmentShader(vertexOutput i) : COLOR
@@ -79,11 +77,11 @@ Shader "Liquid/Liquid Rendering"
                 float3 WorldNormal = mul((float3x3)unity_MatrixInvV, viewNormal);
 
                 float depth = _Depth.Load(int3(i.vertex.xy, 0)).r;
-                depth = Linear01Depth(depth);
+                //depth = Linear01Depth(depth);
 
                 float3 thickness = color.a;
 
-                return float4(color.rgb,depth);
+                return float4(WorldNormal.rgb,depth);
              }
              ENDCG
           }

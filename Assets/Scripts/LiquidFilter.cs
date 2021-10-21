@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Experimental.Rendering;
 
 public class LiquidFilter : MonoBehaviour
 {
@@ -21,7 +22,7 @@ public class LiquidFilter : MonoBehaviour
 
     void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
-        RenderTexture bluredDepth = RenderTexture.GetTemporary(source.width, source.height, source.depth, source.graphicsFormat);
+        RenderTexture bluredDepth = RenderTexture.GetTemporary(source.width, source.height, source.depth, GraphicsFormat.R16_SFloat);
         Graphics.Blit(source, bluredDepth, blurMaterial);
 
         filterMaterial.SetTexture("_Depth",bluredDepth);
