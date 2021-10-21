@@ -4,8 +4,9 @@ Shader "Liquid/Liquid Rendering"
 {
     Properties
     {
-       _MainTex("Source", 2D) = "white" {}
-       _Depth("Source", 2D) = "white" {}
+		_MainTex("Source", 2D) = "white" {}
+		_Depth("Source", 2D) = "white" {}
+        _Specular("Specular",Range(1,100)) = 1
     }
         SubShader
        {
@@ -18,6 +19,8 @@ Shader "Liquid/Liquid Rendering"
              CGPROGRAM
              #pragma vertex vertexShader
              #pragma fragment fragmentShader
+
+             #include <UnityLightingCommon.cginc>
 
              #include "UnityCG.cginc"
 
@@ -48,6 +51,8 @@ Shader "Liquid/Liquid Rendering"
              Texture2D _Depth;
              float4 _Depth_TexelSize;
 
+             float _Specular;
+
              float3 rayFromScreenUV(in float2 uv, in float4x4 InvMatrix)
              {
                  float x = uv.x * 2.0 - 1.0;
@@ -69,6 +74,10 @@ Shader "Liquid/Liquid Rendering"
                 float2 uv = i.texcoord;
                 float4 color = tex2D(_MainTex, uv);
 
+                float3 viewPos = viewSpacePosAtPixelPosition(i.vertex.xy);
+                viewPos.z = -viewPos.z;
+                float3 WorldPos = mul(UNITY_MATRIX_IV, float4(viewPos.xyz, 1)).xyz;
+
                 float3 vpl = viewSpacePosAtPixelPosition(i.vertex.xy + float2(-1, 0));
                 float3 vpr = viewSpacePosAtPixelPosition(i.vertex.xy + float2(1, 0));
                 float3 vpd = viewSpacePosAtPixelPosition(i.vertex.xy + float2(0, -1));
@@ -83,7 +92,19 @@ Shader "Liquid/Liquid Rendering"
 
                 float3 thickness = color.a;
 
-                return float4(WorldNormal.rgb,depth);
+                float3 finalColor = color;
+
+                float3 LightDir = _WorldSpaceLightPos0;
+                float3 ReflectLight = reflect(LightDir, WorldNormal);
+                float3 ViewDir = normalize(_WorldSpaceCameraPos - WorldPos);
+
+                float3 ambientLighting = UNITY_LIGHTMODEL_AMBIENT.rgb * finalColor;
+                float3 diffuse = saturate(dot(WorldNormal, LightDir)) * finalColor * _LightColor0;
+                float3 specular = pow(saturate(dot(ReflectLight, -ViewDir)),_Specular) * finalColor * _LightColor0;
+
+                finalColor = ambientLighting + diffuse + specular;
+
+                return float4(finalColor,depth);
              }
              ENDCG
           }
