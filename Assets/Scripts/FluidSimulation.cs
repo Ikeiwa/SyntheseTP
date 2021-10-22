@@ -7,7 +7,7 @@ public class FluidSimulation : MonoBehaviour
 {
     public int population;
     public Vector3 volume;
-    [Range(0.1f,10)]
+    [Range(0,10)]
     public float simulationSpeed = 1;
 
     public Material material;

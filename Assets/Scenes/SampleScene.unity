@@ -154,7 +154,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   population: 100000
   volume: {x: 3, y: 3, z: 3}
-  simulationSpeed: 0.1
+  simulationSpeed: 0
   material: {fileID: 2100000, guid: 6a9795756151c8d468fafe064a61e20f, type: 2}
   compute: {fileID: 7200000, guid: 6f22fd557424eed47ad4efd1a769b6cf, type: 3}
 --- !u!4 &246213679
@@ -415,6 +415,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   material: {fileID: 2100000, guid: a832f159bb5afb749a0ba19f50ab99bc, type: 2}
+  colorCopy: {fileID: 2100000, guid: c49ff782a6e580f48a45d5135346cd30, type: 2}
   liquidFilter: {fileID: 1656673904}
 --- !u!114 &963194230
 MonoBehaviour:
@@ -480,7 +481,9 @@ MonoBehaviour:
   filterMaterial: {fileID: 2100000, guid: 665d186a467d519479452772ee6cae95, type: 2}
   depthCopyMaterial: {fileID: 2100000, guid: 3756f763c74f16a42ad7e0d2b2c0bd01, type: 2}
   blurMaterial: {fileID: 2100000, guid: 413846fbe280e1a44825667864bb3c3c, type: 2}
+  smoothRendering: 1
   bluredDepth: {fileID: 0}
+  backgroundTexture: {fileID: 0}
 --- !u!20 &1656673905
 Camera:
   m_ObjectHideFlags: 0

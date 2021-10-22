@@ -60,12 +60,11 @@ Shader "Liquid/Liquid Display"
                 float depth = tex2D(_CameraDepthTexture,uv);
                 depth = Linear01Depth(depth);
 
-                float liquidDepth = tex2D(_LiquidDepth, uv).r;
+                float2 liquidData = tex2D(_LiquidDepth, uv).rg;
 
-                float mask = saturate(sign(depth - liquidDepth));
+                float mask = saturate(sign(depth - liquidData.x));
 
-
-                return lerp(color, lerp(color,liquid,1), mask);
+                return lerp(color, liquid, mask);
              }
              ENDCG
           }

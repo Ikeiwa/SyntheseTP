@@ -9,13 +9,14 @@ public class LiquidFilter : MonoBehaviour
     public Material depthCopyMaterial;
     public Material blurMaterial;
     public bool smoothRendering = true;
-    [HideInInspector]
-    public RenderTexture bluredDepth;
+    [HideInInspector] public RenderTexture bluredDepth;
+    [HideInInspector] public RenderTexture backgroundTexture;
 
     private Camera cam;
     
     private static readonly int Depth = Shader.PropertyToID("_Depth");
     private static readonly int UnityMatrixIv = Shader.PropertyToID("UNITY_MATRIX_IV");
+    private static readonly int Background = Shader.PropertyToID("_Background");
 
     void Start()
     {
@@ -44,6 +45,7 @@ public class LiquidFilter : MonoBehaviour
 
         filterMaterial.SetMatrix(UnityMatrixIv, transform.localToWorldMatrix);
         filterMaterial.SetTexture(Depth,bluredDepth);
+        filterMaterial.SetTexture(Background, backgroundTexture);
         Graphics.Blit(source, destination, filterMaterial);
 
         RenderTexture.ReleaseTemporary(tmpDepth);

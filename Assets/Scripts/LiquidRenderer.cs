@@ -7,6 +7,7 @@ using UnityEngine.Experimental.Rendering;
 public class LiquidRenderer : MonoBehaviour
 {
     public Material material;
+    public Material colorCopy;
     public LiquidFilter liquidFilter;
 
     private RenderTexture liquidTexture;
@@ -22,7 +23,8 @@ public class LiquidRenderer : MonoBehaviour
         liquidTexture.depth = 16;
         liquidTexture.filterMode = FilterMode.Bilinear;
         liquidCam.targetTexture = liquidTexture;
-        liquidFilter.bluredDepth = new RenderTexture(liquidTexture.width, liquidTexture.height, liquidTexture.depth, GraphicsFormat.R16_SFloat);
+        liquidFilter.bluredDepth = new RenderTexture(liquidTexture.width, liquidTexture.height, liquidTexture.depth, GraphicsFormat.R16G16_SFloat);
+        liquidFilter.backgroundTexture = new RenderTexture(Screen.width,Screen.height,16,cam.allowHDR? DefaultFormat.HDR:DefaultFormat.LDR);
 
         material.SetTexture("_LiquidTex", liquidTexture);
         material.SetTexture("_LiquidDepth", liquidFilter.bluredDepth);
@@ -37,6 +39,7 @@ public class LiquidRenderer : MonoBehaviour
 
     void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
+        Graphics.Blit(source, liquidFilter.backgroundTexture, colorCopy);
         Graphics.Blit(source, destination, material);
     }
 }

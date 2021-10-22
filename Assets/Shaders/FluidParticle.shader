@@ -99,7 +99,7 @@ Shader "Liquid/Fluid Particle" {
 			clip(depth - 0.01f);
 
 			float4 col = i.color;
-			col.a = depth;
+			col.a = ceil(depth)*_ParticleRadius*2;
 
 			o.color = col;
 			o.depth = (i.screenPos.z + depth * _ParticleRadius) / i.screenPos.w;

@@ -1,4 +1,4 @@
-Shader "Hidden/Compute Liquid Data"
+Shader "Hidden/CopyColor"
 {
     Properties
     {
@@ -37,23 +37,11 @@ Shader "Hidden/Compute Liquid Data"
                 return o;
             }
 
-            sampler2D_float _MainTex;
-            float4 _MainTex_TexelSize;
+            sampler2D _MainTex;
 
-            sampler2D_float _CameraDepthTexture;
-            float4 _CameraDepthTexture_TexelSize;
-
-            float _FluidDensity;
-
-            float getRawDepth(float2 uv) { return SAMPLE_DEPTH_TEXTURE_LOD(_CameraDepthTexture, float4(uv, 0.0, 0.0)); }
-
-            float2 frag(v2f i) : SV_Target
+            float4 frag (v2f i) : SV_Target
             {
-                float2 uv = i.vertex * _CameraDepthTexture_TexelSize.xy;
-
-                float thickness = tex2Dlod(_MainTex,float4(uv, 0.0, 0.0)).a;
-                
-                return float2(Linear01Depth(getRawDepth(uv)), thickness);
+                return tex2D(_MainTex, i.uv);
             }
             ENDCG
         }

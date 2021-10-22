@@ -6,7 +6,11 @@ Shader "Liquid/Liquid Rendering"
     {
 		_MainTex("Source", 2D) = "white" {}
 		_Depth("Source", 2D) = "white" {}
+    	_Background("Background",2D) = "white" {}
         _Specular("Specular",Range(1,100)) = 1
+		_FluidDensity("Fluid Density",Float) = 10
+    	_Reflectance("Reflectance", Range(0,1)) = 0
+    	_Refractance("Refractance",Range(0,1)) = 1
     }
         SubShader
        {
@@ -46,12 +50,16 @@ Shader "Liquid/Liquid Rendering"
 
              sampler2D _MainTex;
              sampler2D _LiquidTex;
+             sampler2D _Background;
              uniform float4x4 UNITY_MATRIX_IV;
 
              Texture2D _Depth;
              float4 _Depth_TexelSize;
 
              float _Specular;
+             float _Reflectance;
+             float _Refractance;
+             float _FluidDensity;
 
              float3 rayFromScreenUV(in float2 uv, in float4x4 InvMatrix)
              {
@@ -71,14 +79,15 @@ Shader "Liquid/Liquid Rendering"
 
              float4 fragmentShader(vertexOutput i) : COLOR
              {
-             	float depth = _Depth.Load(int3(i.vertex.xy, 0)).r;
+                float2 liquidData = _Depth.Load(int3(i.vertex.xy, 0)).rg;
+             	float depth = liquidData.r;
                 //depth = Linear01Depth(depth);
 
                 float2 uv = i.texcoord;
-                float4 color = tex2D(_MainTex, uv);
+                
 
                 if(depth<=0 || depth>=1)
-                    return color;
+                    return tex2D(_MainTex, uv);
 
                 float3 viewPos = viewSpacePosAtPixelPosition(i.vertex.xy);
                 viewPos.z = -viewPos.z;
@@ -93,21 +102,32 @@ Shader "Liquid/Liquid Rendering"
                 viewNormal.z = -viewNormal.z;
                 float3 WorldNormal = mul(UNITY_MATRIX_IV, float4(viewNormal.xyz, 0)).xyz;
 
-                float thickness = color.a;
+                float thickness = saturate(liquidData.g / _FluidDensity);
 
+                float4 color = tex2D(_MainTex, uv);
                 float3 finalColor = color;
 
                 float3 LightDir = _WorldSpaceLightPos0;
                 float3 ReflectLight = reflect(-LightDir, WorldNormal);
                 float3 ViewDir = normalize(_WorldSpaceCameraPos - WorldPos);
+                float3 ReflectDir = reflect(-ViewDir, WorldNormal);
 
                 float NdotL = saturate(dot(WorldNormal, LightDir));
+                float NdotV = saturate(dot(WorldNormal, ViewDir));
 
                 float3 ambientLighting = UNITY_LIGHTMODEL_AMBIENT.rgb * finalColor;
                 float3 diffuse = NdotL * finalColor * _LightColor0;
                 float3 specular = pow(saturate(dot(ReflectLight, ViewDir)),_Specular) * _LightColor0 * NdotL;
 
-                finalColor = ambientLighting + diffuse + specular;
+                float fresnel = _Reflectance + (1 - _Reflectance) * pow(1-NdotV, 5);
+
+                float3 reflection = UNITY_SAMPLE_TEXCUBE(unity_SpecCube0, ReflectDir);
+
+                finalColor = ambientLighting + diffuse + specular + (reflection* saturate(fresnel));
+
+                float4 backgroundColor = tex2D(_Background, uv + viewNormal.xy * thickness * fresnel * _Refractance);
+
+                finalColor = lerp(backgroundColor, finalColor, thickness);
 
                 return float4(finalColor,thickness);
              }

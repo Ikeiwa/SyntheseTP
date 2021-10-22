@@ -7,8 +7,8 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: M_DepthToColor
-  m_Shader: {fileID: 4800000, guid: 32f81a0861072c744bba0ecca27953a6, type: 3}
+  m_Name: M_CopyColor
+  m_Shader: {fileID: 4800000, guid: 2d8ed47f81ca72540b2d074e5c108dba, type: 3}
   m_ShaderKeywords: 
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
