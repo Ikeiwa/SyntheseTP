@@ -98,12 +98,14 @@ Shader "Liquid/Liquid Rendering"
                 float3 finalColor = color;
 
                 float3 LightDir = _WorldSpaceLightPos0;
-                float3 ReflectLight = reflect(LightDir, WorldNormal);
+                float3 ReflectLight = reflect(-LightDir, WorldNormal);
                 float3 ViewDir = normalize(_WorldSpaceCameraPos - WorldPos);
 
+                float NdotL = saturate(dot(WorldNormal, LightDir));
+
                 float3 ambientLighting = UNITY_LIGHTMODEL_AMBIENT.rgb * finalColor;
-                float3 diffuse = saturate(dot(WorldNormal, LightDir)) * finalColor * _LightColor0;
-                float3 specular = pow(saturate(dot(ReflectLight, -ViewDir)),_Specular) * finalColor * _LightColor0;
+                float3 diffuse = NdotL * finalColor * _LightColor0;
+                float3 specular = pow(saturate(dot(ReflectLight, ViewDir)),_Specular) * _LightColor0 * NdotL;
 
                 finalColor = ambientLighting + diffuse + specular;
 

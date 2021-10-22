@@ -49,13 +49,15 @@ Shader "Liquid/Liquid Display"
              sampler2D_float _LiquidDepth;
              float4 _LiquidDepth_TexelSize;
 
+             float getRawDepth(float2 uv) { return SAMPLE_DEPTH_TEXTURE_LOD(_CameraDepthTexture, float4(uv, 0.0, 0.0)); }
+
              float4 fragmentShader(vertexOutput i) : COLOR
              {
                 float2 uv = i.texcoord;
                 float4 color = tex2D(_MainTex, uv);
                 float4 liquid = tex2D(_LiquidTex, uv);
 
-                float depth = tex2D(_CameraDepthTexture, uv).r;
+                float depth = tex2D(_CameraDepthTexture,uv);
                 depth = Linear01Depth(depth);
 
                 float liquidDepth = tex2D(_LiquidDepth, uv).r;
@@ -63,7 +65,8 @@ Shader "Liquid/Liquid Display"
 
                 float mask = saturate(sign(depth - liquidDepth));
 
-                return lerp(color, liquid, mask);
+
+                return lerp(color, lerp(color,liquid,0.5f), mask);
              }
              ENDCG
           }
