@@ -415,7 +415,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   material: {fileID: 2100000, guid: a832f159bb5afb749a0ba19f50ab99bc, type: 2}
-  liquidCam: {fileID: 1656673905}
+  liquidFilter: {fileID: 1656673904}
 --- !u!114 &963194230
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -479,6 +479,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   filterMaterial: {fileID: 2100000, guid: 665d186a467d519479452772ee6cae95, type: 2}
   blurMaterial: {fileID: 2100000, guid: 413846fbe280e1a44825667864bb3c3c, type: 2}
+  bluredDepth: {fileID: 0}
 --- !u!20 &1656673905
 Camera:
   m_ObjectHideFlags: 0

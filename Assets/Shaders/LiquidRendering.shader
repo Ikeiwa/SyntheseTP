@@ -78,7 +78,7 @@ Shader "Liquid/Liquid Rendering"
                 float4 color = tex2D(_MainTex, uv);
 
                 if(depth<=0 || depth>=1)
-                    return float4(color.rgb,depth);
+                    return color;
 
                 float3 viewPos = viewSpacePosAtPixelPosition(i.vertex.xy);
                 viewPos.z = -viewPos.z;
@@ -93,7 +93,7 @@ Shader "Liquid/Liquid Rendering"
                 viewNormal.z = -viewNormal.z;
                 float3 WorldNormal = mul(UNITY_MATRIX_IV, float4(viewNormal.xyz, 0)).xyz;
 
-                float3 thickness = color.a;
+                float thickness = color.a;
 
                 float3 finalColor = color;
 
@@ -107,7 +107,7 @@ Shader "Liquid/Liquid Rendering"
 
                 finalColor = ambientLighting + diffuse + specular;
 
-                return float4(finalColor,depth);
+                return float4(finalColor,thickness);
              }
              ENDCG
           }

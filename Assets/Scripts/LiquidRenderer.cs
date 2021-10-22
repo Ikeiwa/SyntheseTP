@@ -7,7 +7,7 @@ using UnityEngine.Experimental.Rendering;
 public class LiquidRenderer : MonoBehaviour
 {
     public Material material;
-    public Camera liquidCam;
+    public LiquidFilter liquidFilter;
 
     private RenderTexture liquidTexture;
 
@@ -15,14 +15,17 @@ public class LiquidRenderer : MonoBehaviour
     {
         Camera cam = GetComponent<Camera>();
         cam.depthTextureMode |= DepthTextureMode.Depth;
+        Camera liquidCam = liquidFilter.gameObject.GetComponent<Camera>();
         liquidCam.depthTextureMode |= DepthTextureMode.Depth;
 
         liquidTexture = new RenderTexture(Screen.width, Screen.height, 32, GraphicsFormat.R16G16B16A16_SFloat);
         liquidTexture.depth = 16;
         liquidTexture.filterMode = FilterMode.Point;
         liquidCam.targetTexture = liquidTexture;
-        
+        liquidFilter.bluredDepth = new RenderTexture(liquidTexture.width, liquidTexture.height, liquidTexture.depth, GraphicsFormat.R16_SFloat);
+
         material.SetTexture("_LiquidTex", liquidTexture);
+        material.SetTexture("_LiquidDepth", liquidFilter.bluredDepth);
 
         if (null == material || null == material.shader ||
             !material.shader.isSupported)
