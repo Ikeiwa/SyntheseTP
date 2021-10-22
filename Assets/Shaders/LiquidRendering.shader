@@ -71,8 +71,14 @@ Shader "Liquid/Liquid Rendering"
 
              float4 fragmentShader(vertexOutput i) : COLOR
              {
+             	float depth = _Depth.Load(int3(i.vertex.xy, 0)).r;
+                depth = Linear01Depth(depth);
+
                 float2 uv = i.texcoord;
                 float4 color = tex2D(_MainTex, uv);
+
+                if(depth<=0 || depth>=1)
+                    return float4(color.rgb,depth);
 
                 float3 viewPos = viewSpacePosAtPixelPosition(i.vertex.xy);
                 viewPos.z = -viewPos.z;
@@ -86,9 +92,6 @@ Shader "Liquid/Liquid Rendering"
                 float3 viewNormal = normalize(-cross(vpu - vpd, vpr - vpl));
                 viewNormal.z = -viewNormal.z;
                 float3 WorldNormal = mul(UNITY_MATRIX_IV, float4(viewNormal.xyz, 0)).xyz;
-
-                float depth = _Depth.Load(int3(i.vertex.xy, 0)).r;
-                depth = Linear01Depth(depth);
 
                 float3 thickness = color.a;
 

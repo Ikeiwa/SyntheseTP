@@ -18,8 +18,7 @@ Shader "Hidden/DepthBlur"
             #define BSIGMA 0.1
 			#define MSIZE 15
 
-			const float kernel[MSIZE] = {0.031225216, 0.033322271, 0.035206333, 0.036826804, 0.038138565, 0.039104044, 0.039695028, 0.039894000, 0.039695028, 0.039104044, 0.038138565, 0.036826804, 0.035206333, 0.033322271, 0.031225216};
-
+			static const float kernel[MSIZE] = {0.031225216, 0.033322271, 0.035206333, 0.036826804, 0.038138565, 0.039104044, 0.039695028, 0.039894000, 0.039695028, 0.039104044, 0.038138565, 0.036826804, 0.035206333, 0.033322271, 0.031225216};
 
             #include "UnityCG.cginc"
 
@@ -43,20 +42,27 @@ Shader "Hidden/DepthBlur"
                 return o;
             }
 
-            sampler2D _CameraDepthTexture;
+            sampler2D_float _CameraDepthTexture;
+            float4 _CameraDepthTexture_TexelSize;
+
+            float getRawDepth(float2 uv) { return SAMPLE_DEPTH_TEXTURE_LOD(_CameraDepthTexture, float4(uv, 0.0, 0.0)); }
 
             float normpdf(in float x, in float sigma)
             {
                 return 0.39894 * exp(-0.5 * x * x / (sigma * sigma)) / sigma;
             }
 
+            float normpdf3(in float3 v, in float sigma)
+			{
+			    return 0.39894*exp(-0.5*dot(v,v)/(sigma*sigma))/sigma;
+			}
 
             float frag (v2f i) : SV_Target
             {
-                float pixelDepth = tex2D(_CameraDepthTexture, i.uv).r;
+                float2 uv = i.vertex*_CameraDepthTexture_TexelSize.xy;
+                float pixelDepth = getRawDepth(uv);
 				float finalDepth;
-
-                return pixelDepth;
+                //return pixelDepth;
 
                 if (pixelDepth <= 0.0f || pixelDepth >= 1) {
                     finalDepth = pixelDepth;
@@ -73,11 +79,11 @@ Shader "Hidden/DepthBlur"
                     {
                         for (int y = -kSize; y <= kSize; ++y)
                         {
-                            float cc = tex2D(_CameraDepthTexture, i.uv + (float2(float(x), float(y)) / _ScreenParams.xy)).r;
+                            float cc = getRawDepth(uv+(float2(float(x), float(y))/_ScreenParams.xy));
+                            //float cc = tex2D(_CameraDepthTexture, i.uv + (float2(float(x), float(y)) / _ScreenParams.xy)).r;
                             float factor = normpdf(cc - pixelDepth, BSIGMA) * bZ * kernel[kSize + y] * kernel[kSize + x];
                             Z += factor;
                             finalDepth += factor * cc;
-
                         }
                     }
 

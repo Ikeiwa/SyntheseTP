@@ -18,7 +18,6 @@ Shader "Liquid/Fluid Particle" {
 		struct v2f {
 			float4 pos   : SV_POSITION;
 			fixed4 color : COLOR;
-			float3 normal: NORMAL;
 			float2 uv : TEXCOORD0;
 			float4 screenPos : TEXCOORD1;
 		};

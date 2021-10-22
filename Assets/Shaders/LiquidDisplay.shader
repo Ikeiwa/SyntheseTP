@@ -42,8 +42,8 @@ Shader "Liquid/Liquid Display"
              }
 
              sampler2D _MainTex;
-             sampler2D _LiquidTex;
-             sampler2D _CameraDepthTexture;
+             sampler2D_float _LiquidTex;
+             sampler2D_float _CameraDepthTexture;
 
              float4 fragmentShader(vertexOutput i) : COLOR
              {
