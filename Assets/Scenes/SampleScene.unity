@@ -154,6 +154,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   population: 100000
   volume: {x: 3, y: 3, z: 3}
+  particleRadius: 0.05
   simulationSpeed: 0
   material: {fileID: 2100000, guid: 6a9795756151c8d468fafe064a61e20f, type: 2}
   compute: {fileID: 7200000, guid: 6f22fd557424eed47ad4efd1a769b6cf, type: 3}

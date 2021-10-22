@@ -7,7 +7,9 @@ public class FluidSimulation : MonoBehaviour
 {
     public int population;
     public Vector3 volume;
-    [Range(0,10)]
+    [Range(0.01f,1)]
+    public float particleRadius = 0.05f;
+    [Range(0, 10)]
     public float simulationSpeed = 1;
 
     public Material material;
@@ -33,11 +35,12 @@ public class FluidSimulation : MonoBehaviour
     }
 
     private void Setup() {
-        Mesh mesh = CreateQuad(0.1f,0.1f);
+        Mesh mesh = CreateQuad(particleRadius*2, particleRadius*2);
         this.mesh = mesh;
 
         // Boundary surrounding the meshes we will be drawing.  Used for occlusion.
         bounds = new Bounds(transform.position, volume*2);
+        material.SetFloat("_ParticleRadius", particleRadius);
 
         InitializeBuffers();
     }
