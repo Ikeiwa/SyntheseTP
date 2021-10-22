@@ -20,7 +20,7 @@ public class LiquidRenderer : MonoBehaviour
 
         liquidTexture = new RenderTexture(Screen.width, Screen.height, 32, GraphicsFormat.R16G16B16A16_SFloat);
         liquidTexture.depth = 16;
-        liquidTexture.filterMode = FilterMode.Point;
+        liquidTexture.filterMode = FilterMode.Bilinear;
         liquidCam.targetTexture = liquidTexture;
         liquidFilter.bluredDepth = new RenderTexture(liquidTexture.width, liquidTexture.height, liquidTexture.depth, GraphicsFormat.R16_SFloat);
 

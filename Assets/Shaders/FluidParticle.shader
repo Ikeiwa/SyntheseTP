@@ -1,7 +1,7 @@
 Shader "Liquid/Fluid Particle" {
 	Properties
     {
-        _MainTex ("Texture", 2D) = "white" {}
+        //_MainTex ("Texture", 2D) = "white" {}
     	_Elasticity ("Elasticity", Float) = 5
 		_ParticleRadius("Particle Radius",Float) = 0.05
     }
@@ -29,7 +29,7 @@ Shader "Liquid/Fluid Particle" {
 		};
 
 		StructuredBuffer<Particle> Particles;
-		sampler2D _MainTex;
+		//sampler2D _MainTex;
 		float _Elasticity;
 		float _ParticleRadius;
 
@@ -40,7 +40,7 @@ Shader "Liquid/Fluid Particle" {
 			float4 viewPos = mul(UNITY_MATRIX_V, float4(worldPivot, 1)) + float4(i.vertex.xyz, 0);
 			o.pos = mul(UNITY_MATRIX_P, viewPos);
 
-			/*float3 velocity = Particles[instanceID].vel;
+			float3 velocity = Particles[instanceID].vel;
 
 			if (velocity.x + velocity.y + velocity.z != 0)
 			{
@@ -74,7 +74,7 @@ Shader "Liquid/Fluid Particle" {
 
 				o.pos.x /= ratio;
 				o.pos.xy += centerClip.xy;
-			}*/
+			}
 
 			o.color = Particles[instanceID].color;
 			o.uv = i.texcoord;
@@ -92,11 +92,17 @@ Shader "Liquid/Fluid Particle" {
 		fragOut frag(v2f i){
 			fragOut o;
 
-			float4 col = tex2D(_MainTex, i.uv) * i.color;
-			clip(col.a - 0.01f);
+			float2 remapUv = i.uv*2-1;
+			remapUv *= remapUv;
+			const float depth = 1 - saturate(remapUv.x+remapUv.y);
+
+			clip(depth - 0.01f);
+
+			float4 col = i.color;
+			col.a = depth;
 
 			o.color = col;
-			o.depth = (i.screenPos.z + col.a * _ParticleRadius) / i.screenPos.w;
+			o.depth = (i.screenPos.z + depth * _ParticleRadius) / i.screenPos.w;
 
 			return o;
 		}
