@@ -6,6 +6,7 @@ using UnityEngine.Experimental.Rendering;
 public class LiquidFilter : MonoBehaviour
 {
     public Material filterMaterial;
+    public Material depthCopyMaterial;
     public Material blurMaterial;
     [HideInInspector]
     public RenderTexture bluredDepth;
@@ -29,10 +30,18 @@ public class LiquidFilter : MonoBehaviour
 
     void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
-        Graphics.Blit(source, bluredDepth, blurMaterial);
+        RenderTexture tmpDepth = RenderTexture.GetTemporary(bluredDepth.width,bluredDepth.height,bluredDepth.depth,bluredDepth.graphicsFormat);
+        Graphics.Blit(source, bluredDepth, depthCopyMaterial);
+
+        Graphics.Blit(bluredDepth, tmpDepth, blurMaterial);
+        Graphics.Blit(tmpDepth, bluredDepth, blurMaterial);
+        Graphics.Blit(bluredDepth, tmpDepth, blurMaterial);
+        Graphics.Blit(tmpDepth, bluredDepth, blurMaterial);
 
         filterMaterial.SetMatrix(UnityMatrixIv, transform.localToWorldMatrix);
         filterMaterial.SetTexture(Depth,bluredDepth);
         Graphics.Blit(source, destination, filterMaterial);
+
+        RenderTexture.ReleaseTemporary(tmpDepth);
     }
 }

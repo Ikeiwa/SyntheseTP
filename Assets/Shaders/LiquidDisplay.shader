@@ -66,7 +66,7 @@ Shader "Liquid/Liquid Display"
                 float mask = saturate(sign(depth - liquidDepth));
 
 
-                return lerp(color, lerp(color,liquid,0.5f), mask);
+                return lerp(color, lerp(color,liquid,1), mask);
              }
              ENDCG
           }

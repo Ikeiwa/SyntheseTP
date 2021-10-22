@@ -478,6 +478,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   filterMaterial: {fileID: 2100000, guid: 665d186a467d519479452772ee6cae95, type: 2}
+  depthCopyMaterial: {fileID: 2100000, guid: 3756f763c74f16a42ad7e0d2b2c0bd01, type: 2}
   blurMaterial: {fileID: 2100000, guid: 413846fbe280e1a44825667864bb3c3c, type: 2}
   bluredDepth: {fileID: 0}
 --- !u!20 &1656673905

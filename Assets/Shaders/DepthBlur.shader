@@ -42,10 +42,10 @@ Shader "Hidden/DepthBlur"
                 return o;
             }
 
-            sampler2D_float _CameraDepthTexture;
-            float4 _CameraDepthTexture_TexelSize;
+            sampler2D_float _MainTex;
+            float4 _MainTex_TexelSize;
 
-            float getRawDepth(float2 uv) { return SAMPLE_DEPTH_TEXTURE_LOD(_CameraDepthTexture, float4(uv, 0.0, 0.0)); }
+            float getRawDepth(float2 uv) { return tex2Dlod(_MainTex, float4(uv, 0.0, 0.0)).r; }
 
             float normpdf(in float x, in float sigma)
             {
@@ -59,7 +59,7 @@ Shader "Hidden/DepthBlur"
 
             float frag (v2f i) : SV_Target
             {
-                float2 uv = i.vertex*_CameraDepthTexture_TexelSize.xy;
+                float2 uv = i.vertex*_MainTex_TexelSize.xy;
                 float pixelDepth = getRawDepth(uv);
 				float finalDepth;
                 //return pixelDepth;
