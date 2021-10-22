@@ -123,9 +123,11 @@ Shader "Liquid/Liquid Rendering"
 
                 float3 reflection = UNITY_SAMPLE_TEXCUBE(unity_SpecCube0, ReflectDir);
 
-                finalColor = ambientLighting + diffuse + specular + (reflection* saturate(fresnel));
+                float3 backgroundColor = tex2D(_Background, uv + viewNormal.xy * thickness * fresnel * _Refractance);
+                backgroundColor = lerp(backgroundColor, reflection, saturate(fresnel));
 
-                float4 backgroundColor = tex2D(_Background, uv + viewNormal.xy * thickness * fresnel * _Refractance);
+                finalColor = ambientLighting + diffuse + specular;
+
 
                 finalColor = lerp(backgroundColor, finalColor, thickness);
 
