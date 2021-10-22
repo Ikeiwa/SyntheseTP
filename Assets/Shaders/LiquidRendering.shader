@@ -66,13 +66,13 @@ Shader "Liquid/Liquid Rendering"
                  float rawDepth = _Depth.Load(int3(pos, 0)).r;
                  float2 uv = pos * _Depth_TexelSize.xy;
                  float3 ray = rayFromScreenUV(uv, unity_CameraInvProjection);
-                 return ray * Linear01Depth(rawDepth);
+                 return ray * rawDepth;
              }
 
              float4 fragmentShader(vertexOutput i) : COLOR
              {
              	float depth = _Depth.Load(int3(i.vertex.xy, 0)).r;
-                depth = Linear01Depth(depth);
+                //depth = Linear01Depth(depth);
 
                 float2 uv = i.texcoord;
                 float4 color = tex2D(_MainTex, uv);

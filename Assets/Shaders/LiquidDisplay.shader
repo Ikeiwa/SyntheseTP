@@ -61,7 +61,6 @@ Shader "Liquid/Liquid Display"
                 depth = Linear01Depth(depth);
 
                 float liquidDepth = tex2D(_LiquidDepth, uv).r;
-                liquidDepth = Linear01Depth(liquidDepth);
 
                 float mask = saturate(sign(depth - liquidDepth));
 

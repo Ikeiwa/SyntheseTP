@@ -52,11 +52,6 @@ Shader "Hidden/DepthBlur"
                 return 0.39894 * exp(-0.5 * x * x / (sigma * sigma)) / sigma;
             }
 
-            float normpdf3(in float3 v, in float sigma)
-			{
-			    return 0.39894*exp(-0.5*dot(v,v)/(sigma*sigma))/sigma;
-			}
-
             float frag (v2f i) : SV_Target
             {
                 float2 uv = i.vertex*_MainTex_TexelSize.xy;

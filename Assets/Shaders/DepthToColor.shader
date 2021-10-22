@@ -45,7 +45,7 @@ Shader "Hidden/DepthToColor"
             float frag (v2f i) : SV_Target
             {
                 float2 uv = i.vertex*_CameraDepthTexture_TexelSize.xy;
-                return getRawDepth(uv);
+                return Linear01Depth(getRawDepth(uv));
             }
             ENDCG
         }

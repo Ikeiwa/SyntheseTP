@@ -8,6 +8,7 @@ public class LiquidFilter : MonoBehaviour
     public Material filterMaterial;
     public Material depthCopyMaterial;
     public Material blurMaterial;
+    public bool smoothRendering = true;
     [HideInInspector]
     public RenderTexture bluredDepth;
 
@@ -33,10 +34,13 @@ public class LiquidFilter : MonoBehaviour
         RenderTexture tmpDepth = RenderTexture.GetTemporary(bluredDepth.width,bluredDepth.height,bluredDepth.depth,bluredDepth.graphicsFormat);
         Graphics.Blit(source, bluredDepth, depthCopyMaterial);
 
-        Graphics.Blit(bluredDepth, tmpDepth, blurMaterial);
-        Graphics.Blit(tmpDepth, bluredDepth, blurMaterial);
-        Graphics.Blit(bluredDepth, tmpDepth, blurMaterial);
-        Graphics.Blit(tmpDepth, bluredDepth, blurMaterial);
+        if (smoothRendering)
+        {
+            Graphics.Blit(bluredDepth, tmpDepth, blurMaterial);
+            Graphics.Blit(tmpDepth, bluredDepth, blurMaterial);
+            Graphics.Blit(bluredDepth, tmpDepth, blurMaterial);
+            Graphics.Blit(tmpDepth, bluredDepth, blurMaterial);
+        }
 
         filterMaterial.SetMatrix(UnityMatrixIv, transform.localToWorldMatrix);
         filterMaterial.SetTexture(Depth,bluredDepth);
