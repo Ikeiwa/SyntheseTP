@@ -4,9 +4,9 @@ Shader "Liquid/Liquid Rendering"
 {
 	Properties
 	{
-		_MainTex("Source", 2D) = "white" {}
-		_Depth("Source", 2D) = "white" {}
-		_Background("Background",2D) = "white" {}
+		[HideInInspector] _MainTex("Source", 2D) = "white" {}
+		[HideInInspector] _Depth("Source", 2D) = "white" {}
+		[HideInInspector] _Background("Background",2D) = "white" {}
 		_Specular("Specular",Range(1,100)) = 1
 		_FluidDensity("Fluid Density",Range(0,1)) = 1
 		_AttennuationConstant("Attennuation Constant",Float) = 1

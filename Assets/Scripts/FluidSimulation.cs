@@ -7,13 +7,12 @@ public class FluidSimulation : MonoBehaviour
 {
     public int population;
     public Vector3 volume;
-    [Range(0.01f,1)]
-    public float particleRadius = 0.05f;
-    [Range(0, 10)]
-    public float simulationSpeed = 1;
+    [Range(0.01f,1)] public float particleRadius = 0.05f;
+    [Range(1, 10)] public float particleElasticity = 5;
+    [Range(0, 10)] public float simulationSpeed = 1;
 
-    public Material material;
     public ComputeShader compute;
+    private Material particleMaterial;
     private ComputeBuffer meshPropertiesBuffer;
     private ComputeBuffer argsBuffer;
 
@@ -40,7 +39,9 @@ public class FluidSimulation : MonoBehaviour
 
         // Boundary surrounding the meshes we will be drawing.  Used for occlusion.
         bounds = new Bounds(transform.position, volume*2);
-        material.SetFloat("_ParticleRadius", particleRadius);
+        particleMaterial = new Material(Shader.Find("Hidden/Fluid Particle"));
+        particleMaterial.SetFloat("_ParticleRadius", particleRadius);
+        particleMaterial.SetFloat("_Elasticity", particleElasticity);
 
         InitializeBuffers();
     }
@@ -78,7 +79,7 @@ public class FluidSimulation : MonoBehaviour
         meshPropertiesBuffer.SetData(properties);
         compute.SetVector("volume",volume);
         compute.SetBuffer(kernel, "Particles", meshPropertiesBuffer);
-        material.SetBuffer("Particles", meshPropertiesBuffer);
+        particleMaterial.SetBuffer("Particles", meshPropertiesBuffer);
     }
 
     private Mesh CreateQuad(float width = 1f, float height = 1f) {
@@ -123,7 +124,7 @@ public class FluidSimulation : MonoBehaviour
         compute.SetFloat("timeDelta",Time.deltaTime/(1/ simulationSpeed));
         compute.Dispatch(kernel, Mathf.CeilToInt(population / 64f), 1, 1);
 
-        Graphics.DrawMeshInstancedIndirect(mesh, 0, material, bounds, argsBuffer,0,null,ShadowCastingMode.On,false,gameObject.layer);
+        Graphics.DrawMeshInstancedIndirect(mesh, 0, particleMaterial, bounds, argsBuffer,0,null,ShadowCastingMode.On,false,gameObject.layer);
     }
 
     private void OnDestroy() {

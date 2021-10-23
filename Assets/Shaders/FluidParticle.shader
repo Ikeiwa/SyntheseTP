@@ -1,4 +1,4 @@
-Shader "Liquid/Fluid Particle" {
+Shader "Hidden/Fluid Particle" {
 	Properties
     {
         //_MainTex ("Texture", 2D) = "white" {}

@@ -6,10 +6,10 @@ using UnityEngine.Experimental.Rendering;
 [RequireComponent(typeof(Camera))]
 public class LiquidRenderer : MonoBehaviour
 {
-    public Material material;
-    public Material colorCopy;
     public LiquidFilter liquidFilter;
 
+    private Material liquidDisplayMat;
+    private Material colorCopyMat;
     private RenderTexture liquidTexture;
 
     void Start()
@@ -26,20 +26,16 @@ public class LiquidRenderer : MonoBehaviour
         liquidFilter.bluredDepth = new RenderTexture(liquidTexture.width, liquidTexture.height, liquidTexture.depth, GraphicsFormat.R16G16_SFloat);
         liquidFilter.backgroundTexture = new RenderTexture(Screen.width,Screen.height,16,cam.allowHDR? DefaultFormat.HDR:DefaultFormat.LDR);
 
-        material.SetTexture("_LiquidTex", liquidTexture);
-        material.SetTexture("_LiquidDepth", liquidFilter.bluredDepth);
+        liquidDisplayMat = new Material(Shader.Find("Hidden/Liquid Display"));
+        colorCopyMat = new Material(Shader.Find("Hidden/CopyColor"));
 
-        if (null == material || null == material.shader ||
-            !material.shader.isSupported)
-        {
-            enabled = false;
-            return;
-        }
+        liquidDisplayMat.SetTexture("_LiquidTex", liquidTexture);
+        liquidDisplayMat.SetTexture("_LiquidDepth", liquidFilter.bluredDepth);
     }
 
     void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
-        Graphics.Blit(source, liquidFilter.backgroundTexture, colorCopy);
-        Graphics.Blit(source, destination, material);
+        Graphics.Blit(source, liquidFilter.backgroundTexture, colorCopyMat);
+        Graphics.Blit(source, destination, liquidDisplayMat);
     }
 }
