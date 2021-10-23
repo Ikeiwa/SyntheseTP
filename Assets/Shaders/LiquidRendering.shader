@@ -127,8 +127,8 @@ Shader "Liquid/Liquid Rendering"
 				float3 viewDir		= normalize(_WorldSpaceCameraPos - worldPos);
 				float3 H			= normalize(lightDir + viewDir);
 
-				float specular = pow(max(0.0f, dot(H, worldNormal)), _Specular);
-				float diffuse = max(0.0f, dot(lightDir, worldNormal)) * 1.0f;
+				float specular = pow(max(0.0f, dot(H, worldNormal)), _Specular) * _LightColor0;
+				float diffuse = max(0.0f, dot(lightDir, worldNormal)) * _LightColor0;
 
 				//Get liquid data
 				float thickness = saturate(liquidData.g / (1/_FluidDensity));
@@ -150,10 +150,9 @@ Shader "Liquid/Liquid Rendering"
 				fresnelRatio = lerp(fresnelRatio, 1.0, _ReflectionConstant);
 				
 
-				float3 ambientLighting = UNITY_LIGHTMODEL_AMBIENT.rgb;
 				float3 finalColor = (lerp(refractionColor, reflectionColor, fresnelRatio) + specular);
 
-				return float4(finalColor, thickness);
+				return float4(viewNormal, thickness);
 			}
 			ENDCG
 		}
