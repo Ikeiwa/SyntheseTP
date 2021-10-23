@@ -10,15 +10,16 @@ public class FluidSimulation : MonoBehaviour
     [Range(0.01f,1)] public float particleRadius = 0.05f;
     [Range(1, 10)] public float particleElasticity = 5;
     [Range(0, 10)] public float simulationSpeed = 1;
+    public Texture3D initialColors;
 
     public ComputeShader compute;
     private Material particleMaterial;
-    private ComputeBuffer meshPropertiesBuffer;
+    private ComputeBuffer particleBuffer;
     private ComputeBuffer argsBuffer;
 
     private Mesh mesh;
     private Bounds bounds;
-
+    private int kernel;
 
     private struct Particle {
         public Vector3 pos;
@@ -47,7 +48,7 @@ public class FluidSimulation : MonoBehaviour
     }
 
     private void InitializeBuffers() {
-        int kernel = compute.FindKernel("CSMain");
+        kernel = compute.FindKernel("CSMain");
 
         // Argument buffer used by DrawMeshInstancedIndirect.
         uint[] args = new uint[5] { 0, 0, 0, 0, 0 };
@@ -71,18 +72,24 @@ public class FluidSimulation : MonoBehaviour
             props.vel = Vector3.zero;
             //props.color = Color.Lerp(Color.red, Color.blue, Random.value);
 
-            float posX = (position.x + volume.x) / (volume.x * 2);
+            Vector3 pos = position + volume;
+            pos.x /= volume.x * 2;
+            pos.y /= volume.y * 2;
+            pos.z /= volume.z * 2;
 
-            props.color = Color.Lerp(Color.cyan,Color.magenta, posX);
+            props.color = initialColors.GetPixel((int)(pos.x * initialColors.width),
+                                                        (int)(pos.y * initialColors.height),
+                                                        (int)(pos.z * initialColors.depth));
 
             properties[i] = props;
         }
 
-        meshPropertiesBuffer = new ComputeBuffer(population, Particle.Size());
-        meshPropertiesBuffer.SetData(properties);
+        particleBuffer = new ComputeBuffer(population, Particle.Size());
+        particleBuffer.SetData(properties);
+        
         compute.SetVector("volume",volume);
-        compute.SetBuffer(kernel, "Particles", meshPropertiesBuffer);
-        particleMaterial.SetBuffer("Particles", meshPropertiesBuffer);
+        compute.SetBuffer(kernel, "Particles", particleBuffer);
+        particleMaterial.SetBuffer("Particles", particleBuffer);
     }
 
     private Mesh CreateQuad(float width = 1f, float height = 1f) {
@@ -121,9 +128,6 @@ public class FluidSimulation : MonoBehaviour
     }
 
     private void Update() {
-        int kernel = compute.FindKernel("CSMain");
-
-        compute.SetVector("_PusherPosition", Camera.main.transform.position);
         compute.SetFloat("timeDelta",Time.deltaTime/(1/ simulationSpeed));
         compute.Dispatch(kernel, Mathf.CeilToInt(population / 64f), 1, 1);
 
@@ -132,10 +136,10 @@ public class FluidSimulation : MonoBehaviour
 
     private void OnDestroy() {
         // Release gracefully.
-        if (meshPropertiesBuffer != null) {
-            meshPropertiesBuffer.Release();
+        if (particleBuffer != null) {
+            particleBuffer.Release();
         }
-        meshPropertiesBuffer = null;
+        particleBuffer = null;
 
         if (argsBuffer != null) {
             argsBuffer.Release();
