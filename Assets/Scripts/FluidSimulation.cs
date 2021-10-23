@@ -70,7 +70,10 @@ public class FluidSimulation : MonoBehaviour
             props.pos = position;
             props.vel = Vector3.zero;
             //props.color = Color.Lerp(Color.red, Color.blue, Random.value);
-            props.color = Color.blue;
+
+            float posX = (position.x + volume.x) / (volume.x * 2);
+
+            props.color = Color.Lerp(Color.cyan,Color.magenta, posX);
 
             properties[i] = props;
         }
