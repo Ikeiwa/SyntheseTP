@@ -152,7 +152,7 @@ Shader "Liquid/Liquid Rendering"
 
 				float3 finalColor = (lerp(refractionColor, reflectionColor, fresnelRatio) + specular);
 
-				return float4(viewNormal, thickness);
+				return float4(finalColor, thickness);
 			}
 			ENDCG
 		}
