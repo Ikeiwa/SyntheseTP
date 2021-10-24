@@ -1,4 +1,5 @@
-#pragma kernel CSMain
+#pragma kernel CSSpawn
+#pragma kernel CSUpdate
 
 struct Particle {
     float3 pos;
@@ -7,9 +8,14 @@ struct Particle {
 };
 
 RWStructuredBuffer<Particle> Particles;
-float3 _PusherPosition;
+RWBuffer<int> BufferInfos;
 float timeDelta;
 float3 volume;
+
+float time;
+uint maxParticles;
+float3 spawnPos;
+float3 spawnVel;
 
 float nrand(float2 uv)
 {
@@ -43,14 +49,29 @@ float Pseudo3dNoise(float3 pos) {
     return noiseVal / 0.7; // normalize to about [-1..1]
 }
 
-[numthreads(64,1,1)]
-void CSMain (uint3 id : SV_DispatchThreadID) {
-    float3 position = Particles[id.x].pos;
+[numthreads(1,1,1)]
+void CSSpawn (uint3 id : SV_DispatchThreadID)
+{
+    if(BufferInfos[1] >= maxParticles)
+        return;
 
-    /*float dist = distance(position, _PusherPosition);
-    dist = 2.0 - clamp(0.0, 2.0, dist);
     
-    float3 push = normalize(position - _PusherPosition) * dist;*/
+
+    for (uint i = BufferInfos[1]; i < maxParticles; i++)
+    {
+        float3 dir = float3(nrand(float2(time+i,1+i)),nrand(float2(2+i,time+i)),nrand(float2(time+i,time+i)))*2-1;
+        Particles[i].pos = dir + spawnPos;
+        Particles[i].vel = spawnVel * 10;
+    }
+    //BufferInfos[1] = min(BufferInfos[1] + 100, maxParticles);
+}
+
+[numthreads(64,1,1)]
+void CSUpdate (uint3 id : SV_DispatchThreadID) {
+    if(id.x >= BufferInfos[1])
+        return;
+
+    float3 position = Particles[id.x].pos;
 
     float noiseX = Pseudo3dNoise(position);
     float noiseY = Pseudo3dNoise(position+float3(volume.x*2,0,0));
@@ -59,7 +80,7 @@ void CSMain (uint3 id : SV_DispatchThreadID) {
     float3 push = float3(noiseX,noiseY,noiseZ);
     
     Particles[id.x].vel -= Particles[id.x].vel*timeDelta;
-	Particles[id.x].vel += push*timeDelta;
+	//Particles[id.x].vel += push*timeDelta;
     
     Particles[id.x].pos += Particles[id.x].vel*timeDelta;
 

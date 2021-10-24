@@ -5,21 +5,25 @@ using UnityEngine.Rendering;
 
 public class FluidSimulation : MonoBehaviour
 {
-    public int population;
+    public int maxParticles = 100000;
     public Vector3 volume;
     [Range(0.01f,1)] public float particleRadius = 0.05f;
     [Range(1, 10)] public float particleElasticity = 5;
     [Range(0, 10)] public float simulationSpeed = 1;
     public Texture3D initialColors;
+    public Transform spawner;
 
-    public ComputeShader compute;
+    public ComputeShader updateCompute;
     private Material particleMaterial;
     private ComputeBuffer particleBuffer;
     private ComputeBuffer argsBuffer;
 
     private Mesh mesh;
     private Bounds bounds;
-    private int kernel;
+    private int updateKernel;
+    private int spawnKernel;
+    private uint[] args = new uint[5] { 0, 0, 0, 0, 0 };
+    private Particle[] particles;
 
     private struct Particle {
         public Vector3 pos;
@@ -48,23 +52,21 @@ public class FluidSimulation : MonoBehaviour
     }
 
     private void InitializeBuffers() {
-        kernel = compute.FindKernel("CSMain");
-
-        // Argument buffer used by DrawMeshInstancedIndirect.
-        uint[] args = new uint[5] { 0, 0, 0, 0, 0 };
+        updateKernel = updateCompute.FindKernel("CSUpdate");
+        spawnKernel = updateCompute.FindKernel("CSSpawn");
 
         // Arguments for drawing mesh.
         // 0 == number of triangle indices, 1 == population, others are only relevant if drawing submeshes.
         args[0] = (uint)mesh.GetIndexCount(0);
-        args[1] = (uint)population;
+        args[1] = (uint)0;
         args[2] = (uint)mesh.GetIndexStart(0);
         args[3] = (uint)mesh.GetBaseVertex(0);
         argsBuffer = new ComputeBuffer(1, args.Length * sizeof(uint), ComputeBufferType.IndirectArguments);
         argsBuffer.SetData(args);
 
         // Initialize buffer with the given population.
-        Particle[] properties = new Particle[population];
-        for (int i = 0; i < population; i++) {
+        particles = new Particle[maxParticles];
+        for (int i = 0; i < maxParticles; i++) {
             Particle props = new Particle();
             Vector3 position = new Vector3(Random.Range(-volume.x, volume.x), Random.Range(-volume.y, volume.y),Random.Range(-volume.z, volume.z));
 
@@ -81,14 +83,19 @@ public class FluidSimulation : MonoBehaviour
                                                         (int)(pos.y * initialColors.height),
                                                         (int)(pos.z * initialColors.depth));
 
-            properties[i] = props;
+            particles[i] = props;
         }
 
-        particleBuffer = new ComputeBuffer(population, Particle.Size());
-        particleBuffer.SetData(properties);
+        particleBuffer = new ComputeBuffer(maxParticles, Particle.Size());
+        particleBuffer.SetData(particles);
         
-        compute.SetVector("volume",volume);
-        compute.SetBuffer(kernel, "Particles", particleBuffer);
+        updateCompute.SetVector("volume",volume);
+        updateCompute.SetInt("maxParticles", maxParticles);
+        updateCompute.SetBuffer(updateKernel, "Particles", particleBuffer);
+        updateCompute.SetBuffer(updateKernel, "BufferInfos", argsBuffer);
+        updateCompute.SetBuffer(spawnKernel, "Particles", particleBuffer);
+        updateCompute.SetBuffer(spawnKernel, "BufferInfos", argsBuffer);
+
         particleMaterial.SetBuffer("Particles", particleBuffer);
     }
 
@@ -128,8 +135,23 @@ public class FluidSimulation : MonoBehaviour
     }
 
     private void Update() {
-        compute.SetFloat("timeDelta",Time.deltaTime/(1/ simulationSpeed));
-        compute.Dispatch(kernel, Mathf.CeilToInt(population / 64f), 1, 1);
+        if (Input.GetMouseButton(0))
+        {
+            if (args[1] < maxParticles)
+            {
+                updateCompute.SetFloat("time",Time.time);
+                updateCompute.SetVector("spawnPos",spawner.position);
+                updateCompute.SetVector("spawnVel",spawner.forward);
+
+                updateCompute.Dispatch(spawnKernel,1,1,1);
+                args[1] += 100;
+                argsBuffer.SetData(args);
+            }
+        }
+
+
+        updateCompute.SetFloat("timeDelta",Time.deltaTime/(1/ simulationSpeed));
+        updateCompute.Dispatch(updateKernel, Mathf.CeilToInt(maxParticles / 64f), 1, 1);
 
         Graphics.DrawMeshInstancedIndirect(mesh, 0, particleMaterial, bounds, argsBuffer,0,null,ShadowCastingMode.On,false,gameObject.layer);
     }
