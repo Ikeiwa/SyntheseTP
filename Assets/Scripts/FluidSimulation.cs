@@ -6,6 +6,7 @@ using UnityEngine.Rendering;
 public class FluidSimulation : MonoBehaviour
 {
     public int maxParticles = 100000;
+    public int defaultParticles = 50000;
     public Vector3 volume;
     [Range(0.01f,1)] public float particleRadius = 0.05f;
     [Range(1, 10)] public float particleElasticity = 5;
@@ -55,10 +56,12 @@ public class FluidSimulation : MonoBehaviour
         updateKernel = updateCompute.FindKernel("CSUpdate");
         spawnKernel = updateCompute.FindKernel("CSSpawn");
 
+        defaultParticles = Mathf.Min(defaultParticles, maxParticles);
+
         // Arguments for drawing mesh.
         // 0 == number of triangle indices, 1 == population, others are only relevant if drawing submeshes.
         args[0] = (uint)mesh.GetIndexCount(0);
-        args[1] = (uint)0;
+        args[1] = (uint)defaultParticles;
         args[2] = (uint)mesh.GetIndexStart(0);
         args[3] = (uint)mesh.GetBaseVertex(0);
         argsBuffer = new ComputeBuffer(1, args.Length * sizeof(uint), ComputeBufferType.IndirectArguments);
