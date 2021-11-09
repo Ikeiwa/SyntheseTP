@@ -22,13 +22,9 @@ Shader "Hidden/Fluid Particle" {
 			float4 screenPos : TEXCOORD1;
 		};
 
-		struct Particle {
-			float3 pos;
-			float3 vel;
-			float4 color;
-		};
-
-		StructuredBuffer<Particle> Particles;
+		StructuredBuffer<float3> ParticlesPos;
+		StructuredBuffer<float3> ParticlesVel;
+		StructuredBuffer<float4> ParticlesCol;
 		//sampler2D _MainTex;
 		float _Elasticity;
 		float _ParticleRadius;
@@ -36,11 +32,11 @@ Shader "Hidden/Fluid Particle" {
 		v2f vert(appdata_base i, uint instanceID: SV_InstanceID) {
 			v2f o;
 
-			float3 worldPivot = Particles[instanceID].pos;
+			float3 worldPivot = ParticlesPos[instanceID];
 			float4 viewPos = mul(UNITY_MATRIX_V, float4(worldPivot, 1)) + float4(i.vertex.xyz, 0);
 			o.pos = mul(UNITY_MATRIX_P, viewPos);
 
-			float3 velocity = Particles[instanceID].vel;
+			float3 velocity = ParticlesVel[instanceID];
 
 			if (velocity.x + velocity.y + velocity.z != 0)
 			{
@@ -76,7 +72,7 @@ Shader "Hidden/Fluid Particle" {
 				o.pos.xy += centerClip.xy;
 			}
 
-			o.color = Particles[instanceID].color;
+			o.color = ParticlesCol[instanceID];
 			o.uv = i.texcoord;
 			o.screenPos = ComputeScreenPos(o.pos);
 

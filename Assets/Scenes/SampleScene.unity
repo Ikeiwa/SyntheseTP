@@ -152,14 +152,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f00b1c9ed5731fc458264d5771eae534, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxParticles: 100000
+  initialColors: {fileID: 11700000, guid: ecb9c7a570e70904bab013eb6a875461, type: 3}
+  updateCompute: {fileID: 7200000, guid: 6f22fd557424eed47ad4efd1a769b6cf, type: 3}
+  maxParticles: 10000
   volume: {x: 3, y: 3, z: 3}
-  particleRadius: 0.05
+  particleRadius: 0.125
   particleElasticity: 5
   simulationSpeed: 1
-  initialColors: {fileID: 11700000, guid: ecb9c7a570e70904bab013eb6a875461, type: 3}
-  spawner: {fileID: 752809503}
-  updateCompute: {fileID: 7200000, guid: 6f22fd557424eed47ad4efd1a769b6cf, type: 3}
+  gravity: {x: 0, y: -9.81, z: 0}
+  spring: 20
+  density: 3.6
+  k: 0.01
 --- !u!4 &246213679
 Transform:
   m_ObjectHideFlags: 0

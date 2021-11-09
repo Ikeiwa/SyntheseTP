@@ -1,30 +1,45 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
+using Random = UnityEngine.Random;
 
 public class FluidSimulation : MonoBehaviour
 {
+    public Texture3D initialColors;
+    public ComputeShader updateCompute;
+    [Space]
     public int maxParticles = 100000;
-    public int defaultParticles = 50000;
     public Vector3 volume;
     [Range(0.01f,1)] public float particleRadius = 0.05f;
     [Range(1, 10)] public float particleElasticity = 5;
+    [Space]
     [Range(0, 10)] public float simulationSpeed = 1;
-    public Texture3D initialColors;
-    public Transform spawner;
 
-    public ComputeShader updateCompute;
+    public Vector3 gravity = new Vector3(0, -9.81f, 0);
+    [Range(0, 100)] public float spring = 1;
+    public float density = 1;
+    public float k = 0.1f;
+
     private Material particleMaterial;
-    private ComputeBuffer particleBuffer;
+    private ComputeBuffer positionBuffer;
+    private ComputeBuffer oldPositionBuffer;
+    private ComputeBuffer velocityBuffer;
+    private ComputeBuffer colorBuffer;
     private ComputeBuffer argsBuffer;
 
     private Mesh mesh;
     private Bounds bounds;
-    private int updateKernel;
-    private int spawnKernel;
+
+
+    private int gravityKernel;
+    private int movementKernel;
+    private int relaxationKernel;
+    private int finalVelKernel;
+
+
     private uint[] args = new uint[5] { 0, 0, 0, 0, 0 };
-    private Particle[] particles;
 
     private struct Particle {
         public Vector3 pos;
@@ -39,8 +54,13 @@ public class FluidSimulation : MonoBehaviour
         }
     }
 
+    private Vector3[] positionArray;
+    private Vector3[] oldPositionArray;
+    private Vector3[] velocityArray;
+    private Vector4[] colorArray;
+
     private void Setup() {
-        Mesh mesh = CreateQuad(particleRadius*2, particleRadius*2);
+        Mesh mesh = CreateQuad(particleRadius, particleRadius);
         this.mesh = mesh;
 
         // Boundary surrounding the meshes we will be drawing.  Used for occlusion.
@@ -52,29 +72,39 @@ public class FluidSimulation : MonoBehaviour
         InitializeBuffers();
     }
 
-    private void InitializeBuffers() {
-        updateKernel = updateCompute.FindKernel("CSUpdate");
-        spawnKernel = updateCompute.FindKernel("CSSpawn");
+    private void SetKernelBuffers(int kernel)
+    {
+        updateCompute.SetBuffer(kernel, "ParticlesPos", positionBuffer);
+        updateCompute.SetBuffer(kernel, "ParticlesOldPos", oldPositionBuffer);
+        updateCompute.SetBuffer(kernel, "ParticlesVel", velocityBuffer);
+        updateCompute.SetBuffer(kernel, "ParticlesCol", colorBuffer);
+    }
 
-        defaultParticles = Mathf.Min(defaultParticles, maxParticles);
+    private void InitializeBuffers() {
+        gravityKernel = updateCompute.FindKernel("ApplyGravity");
+        movementKernel = updateCompute.FindKernel("ApplyMovement");
+        relaxationKernel = updateCompute.FindKernel("DoubleRelaxation");
+        finalVelKernel = updateCompute.FindKernel("UpdateFinalVel");
 
         // Arguments for drawing mesh.
         // 0 == number of triangle indices, 1 == population, others are only relevant if drawing submeshes.
         args[0] = (uint)mesh.GetIndexCount(0);
-        args[1] = (uint)defaultParticles;
+        args[1] = (uint)maxParticles;
         args[2] = (uint)mesh.GetIndexStart(0);
         args[3] = (uint)mesh.GetBaseVertex(0);
         argsBuffer = new ComputeBuffer(1, args.Length * sizeof(uint), ComputeBufferType.IndirectArguments);
         argsBuffer.SetData(args);
 
         // Initialize buffer with the given population.
-        particles = new Particle[maxParticles];
-        for (int i = 0; i < maxParticles; i++) {
-            Particle props = new Particle();
-            Vector3 position = new Vector3(Random.Range(-volume.x, volume.x), Random.Range(-volume.y, volume.y),Random.Range(-volume.z, volume.z));
+        positionArray = new Vector3[maxParticles];
+        oldPositionArray = new Vector3[maxParticles];
+        velocityArray = new Vector3[maxParticles];
+        colorArray = new Vector4[maxParticles];
 
-            props.pos = position;
-            props.vel = Vector3.zero;
+        for (int i = 0; i < maxParticles; i++) {
+            Vector3 position = new Vector3(Random.Range(0, volume.x), Random.Range(0, volume.y),Random.Range(0, volume.z));
+            
+            Vector3 velocity = Vector3.zero;
             //props.color = Color.Lerp(Color.red, Color.blue, Random.value);
 
             Vector3 pos = position + volume;
@@ -82,24 +112,37 @@ public class FluidSimulation : MonoBehaviour
             pos.y /= volume.y * 2;
             pos.z /= volume.z * 2;
 
-            props.color = initialColors.GetPixel((int)(pos.x * initialColors.width),
+            Vector4 color = initialColors.GetPixel((int)(pos.x * initialColors.width),
                                                         (int)(pos.y * initialColors.height),
                                                         (int)(pos.z * initialColors.depth));
 
-            particles[i] = props;
+            positionArray[i] = position;
+            oldPositionArray[i] = position;
+            velocityArray[i] = velocity;
+            colorArray[i] = color;
         }
 
-        particleBuffer = new ComputeBuffer(maxParticles, Particle.Size());
-        particleBuffer.SetData(particles);
+        positionBuffer = new ComputeBuffer(maxParticles, sizeof(float)*3);
+        oldPositionBuffer = new ComputeBuffer(maxParticles, sizeof(float)*3);
+        velocityBuffer = new ComputeBuffer(maxParticles, sizeof(float)*3);
+        colorBuffer = new ComputeBuffer(maxParticles, sizeof(float) * 4);
+
+        positionBuffer.SetData(positionArray);
+        oldPositionBuffer.SetData(oldPositionArray);
+        velocityBuffer.SetData(velocityArray);
+        colorBuffer.SetData(colorArray);
         
         updateCompute.SetVector("volume",volume);
-        updateCompute.SetInt("maxParticles", maxParticles);
-        updateCompute.SetBuffer(updateKernel, "Particles", particleBuffer);
-        updateCompute.SetBuffer(updateKernel, "BufferInfos", argsBuffer);
-        updateCompute.SetBuffer(spawnKernel, "Particles", particleBuffer);
-        updateCompute.SetBuffer(spawnKernel, "BufferInfos", argsBuffer);
+        updateCompute.SetInt("particleCount",maxParticles);
 
-        particleMaterial.SetBuffer("Particles", particleBuffer);
+        SetKernelBuffers(gravityKernel);
+        SetKernelBuffers(movementKernel);
+        SetKernelBuffers(relaxationKernel);
+        SetKernelBuffers(finalVelKernel);
+
+        particleMaterial.SetBuffer("ParticlesPos", positionBuffer);
+        particleMaterial.SetBuffer("ParticlesVel", velocityBuffer);
+        particleMaterial.SetBuffer("ParticlesCol", colorBuffer);
     }
 
     private Mesh CreateQuad(float width = 1f, float height = 1f) {
@@ -137,34 +180,32 @@ public class FluidSimulation : MonoBehaviour
         Setup();
     }
 
-    private void Update() {
-        if (Input.GetMouseButton(0))
-        {
-            if (args[1] < maxParticles)
-            {
-                updateCompute.SetFloat("time",Time.time);
-                updateCompute.SetVector("spawnPos",spawner.position);
-                updateCompute.SetVector("spawnVel",spawner.forward);
+    private void FixedUpdate() {
 
-                updateCompute.Dispatch(spawnKernel,1,1,1);
-                args[1] += 100;
-                argsBuffer.SetData(args);
-            }
-        }
+        updateCompute.SetVector("gravity",gravity);
+        updateCompute.SetFloat("particleRadius", (particleRadius*2)*(particleRadius*2));
+        updateCompute.SetFloat("k",k);
+        updateCompute.SetFloat("density",density);
+        updateCompute.SetFloat("springForce", spring);
+        updateCompute.SetFloat("timeDelta",Time.fixedDeltaTime/(1/ simulationSpeed));
 
+        updateCompute.Dispatch(gravityKernel, Mathf.CeilToInt(maxParticles / 64f), 1, 1);
+        updateCompute.Dispatch(movementKernel, Mathf.CeilToInt(maxParticles / 64f), 1, 1);
+        updateCompute.Dispatch(relaxationKernel, Mathf.CeilToInt(maxParticles / 64f), 1, 1);
+        updateCompute.Dispatch(finalVelKernel, Mathf.CeilToInt(maxParticles / 64f), 1, 1);
+    }
 
-        updateCompute.SetFloat("timeDelta",Time.deltaTime/(1/ simulationSpeed));
-        updateCompute.Dispatch(updateKernel, Mathf.CeilToInt(maxParticles / 64f), 1, 1);
-
-        Graphics.DrawMeshInstancedIndirect(mesh, 0, particleMaterial, bounds, argsBuffer,0,null,ShadowCastingMode.On,false,gameObject.layer);
+    private void Update()
+    {
+        Graphics.DrawMeshInstancedIndirect(mesh, 0, particleMaterial, bounds, argsBuffer, 0, null, ShadowCastingMode.On, false, gameObject.layer);
     }
 
     private void OnDestroy() {
         // Release gracefully.
-        if (particleBuffer != null) {
-            particleBuffer.Release();
-        }
-        particleBuffer = null;
+        positionBuffer.Release();
+        oldPositionBuffer.Release();
+        velocityBuffer.Release();
+        colorBuffer.Release();
 
         if (argsBuffer != null) {
             argsBuffer.Release();

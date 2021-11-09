@@ -1,88 +1,99 @@
-#pragma kernel CSSpawn
-#pragma kernel CSUpdate
+#pragma kernel ApplyGravity
+#pragma kernel ApplyMovement
+#pragma kernel DoubleRelaxation
+#pragma kernel UpdateFinalVel
 
-struct Particle {
-    float3 pos;
-    float3 vel;
-    float4 color;
-};
+RWStructuredBuffer<float3> ParticlesPos;
+RWStructuredBuffer<float3> ParticlesOldPos;
+RWStructuredBuffer<float3> ParticlesVel;
+RWStructuredBuffer<float4> ParticlesCol;
 
-RWStructuredBuffer<Particle> Particles;
-RWBuffer<int> BufferInfos;
+uint particleCount;
+
 float timeDelta;
 float3 volume;
-
 float time;
-uint maxParticles;
-float3 spawnPos;
-float3 spawnVel;
 
-float nrand(float2 uv)
+float particleRadius;
+float3 gravity;
+float density;
+float k;
+float springForce;
+
+float SqrtLength(float3 vec)
 {
-    return frac(sin(dot(uv, float2(12.9898, 78.233))) * 43758.5453);
-}
-
-float2 GetGradient(float2 intPos, float t) {
-    float rand = nrand(intPos / 64.0);
-    
-    float angle = 6.283185 * rand + 4.0 * t * rand;
-    return float2(cos(angle), sin(angle));
-}
-
-
-float Pseudo3dNoise(float3 pos) {
-    float2 i = floor(pos.xy);
-    float2 f = pos.xy - i;
-    float2 blend = f * f * (3.0 - 2.0 * f);
-    float noiseVal = 
-        lerp(
-            lerp(
-                dot(GetGradient(i + float2(0, 0), pos.z), f - float2(0, 0)),
-                dot(GetGradient(i + float2(1, 0), pos.z), f - float2(1, 0)),
-                blend.x),
-            lerp(
-                dot(GetGradient(i + float2(0, 1), pos.z), f - float2(0, 1)),
-                dot(GetGradient(i + float2(1, 1), pos.z), f - float2(1, 1)),
-                blend.x),
-        blend.y
-    );
-    return noiseVal / 0.7; // normalize to about [-1..1]
-}
-
-[numthreads(1,1,1)]
-void CSSpawn (uint3 id : SV_DispatchThreadID)
-{
-    if(BufferInfos[1] >= maxParticles)
-        return;
-
-    
-
-    for (uint i = BufferInfos[1]; i < maxParticles; i++)
-    {
-        float3 dir = float3(nrand(float2(time+i,1+i)),nrand(float2(2+i,time+i)),nrand(float2(time+i,time+i)))*2-1;
-        Particles[i].pos = dir + spawnPos;
-        Particles[i].vel = spawnVel * 10;
-    }
-    //BufferInfos[1] = min(BufferInfos[1] + 100, maxParticles);
+	return vec.x*vec.x + vec.y*vec.y + vec.z*vec.z;
 }
 
 [numthreads(64,1,1)]
-void CSUpdate (uint3 id : SV_DispatchThreadID) {
-    if(id.x >= BufferInfos[1])
-        return;
-
-    float3 position = Particles[id.x].pos;
-
-    float noiseX = Pseudo3dNoise(position);
-    float noiseY = Pseudo3dNoise(position+float3(volume.x*2,0,0));
-    float noiseZ = Pseudo3dNoise(position+float3(0,volume.y*2,0));
-
-    float3 push = float3(noiseX,noiseY,noiseZ);
+void ApplyGravity (uint3 id : SV_DispatchThreadID) {
     
-    Particles[id.x].vel -= Particles[id.x].vel*timeDelta;
-	//Particles[id.x].vel += push*timeDelta;
-    
-    Particles[id.x].pos += Particles[id.x].vel*timeDelta;
+    ParticlesVel[id.x] += gravity*timeDelta;
+}
 
-    //Particles[id.x].pos = clamp(Particles[id.x].pos,-volume,volume);
+[numthreads(64,1,1)]
+void ApplyMovement (uint3 id : SV_DispatchThreadID) {
+
+    float3 pos = ParticlesPos[id.x];
+
+    ParticlesOldPos[id.x] = pos;
+    pos += ParticlesVel[id.x]*timeDelta;
+
+    //float3 clipDir = normalize(pos - volume);
+
+    float3 clipDir = min(max(pos - volume,-1),1);
+
+
+    float3 clipForce = max(abs(pos)-volume,0);
+
+    //pos -= clipDir*clipForce * springForce * timeDelta*timeDelta;
+    pos -= clipDir*clipForce*2;
+    ParticlesPos[id.x] = pos;
+}
+
+[numthreads(64,1,1)]
+void DoubleRelaxation (uint3 id : SV_DispatchThreadID) {
+
+    float p = 0;
+
+    float3 pos = ParticlesPos[id.x];
+
+    for(int i=0;i<particleCount;i++)
+    {
+        if(id.x != i)
+        {
+	        float3 otherPos = ParticlesPos[i];
+	        float q = sqrt(SqrtLength(otherPos-pos) / particleRadius);
+	        if(q<1)
+	        {
+		        p = p + (1-q)*(1-q);
+	        }
+        }
+    }
+
+    float P = k*(p-density);
+    float3 dx = 0;
+
+    for(int i=0;i<particleCount;i++)
+    {
+        if(id.x != i)
+        {
+	       float3 otherDir = ParticlesPos[i]-pos;
+	        float q = sqrt(SqrtLength(otherDir) / particleRadius);
+	        if(q<1)
+	        {
+	            float3 D = timeDelta*timeDelta * (P*(1-q))*normalize(otherDir);
+	            ParticlesPos[i] += D/2.0f;
+	            dx -= D/2.0f;
+	        } 
+        }
+    }
+
+    ParticlesPos[id.x] = pos + dx;
+}
+
+[numthreads(64,1,1)]
+void UpdateFinalVel (uint3 id : SV_DispatchThreadID) {
+    
+    ParticlesVel[id.x] = (ParticlesPos[id.x]-ParticlesOldPos[id.x]) / timeDelta;
 }
