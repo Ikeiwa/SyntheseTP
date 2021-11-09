@@ -23,6 +23,7 @@ Shader "Hidden/Fluid Particle" {
 		};
 
 		StructuredBuffer<float3> ParticlesPos;
+		StructuredBuffer<float3> ParticlesOldPos;
 		StructuredBuffer<float3> ParticlesVel;
 		StructuredBuffer<float4> ParticlesCol;
 		//sampler2D _MainTex;
@@ -32,11 +33,14 @@ Shader "Hidden/Fluid Particle" {
 		v2f vert(appdata_base i, uint instanceID: SV_InstanceID) {
 			v2f o;
 
-			float3 worldPivot = ParticlesPos[instanceID];
+			float3 worldPivot = ParticlesOldPos[instanceID] + (ParticlesPos[instanceID]-ParticlesOldPos[instanceID])/2;
+
+			i.vertex.xyz *= _ParticleRadius;
+
 			float4 viewPos = mul(UNITY_MATRIX_V, float4(worldPivot, 1)) + float4(i.vertex.xyz, 0);
 			o.pos = mul(UNITY_MATRIX_P, viewPos);
 
-			float3 velocity = ParticlesVel[instanceID];
+			float3 velocity = ParticlesPos[instanceID]-ParticlesOldPos[instanceID];
 
 			if (velocity.x + velocity.y + velocity.z != 0)
 			{

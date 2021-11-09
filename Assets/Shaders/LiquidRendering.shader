@@ -11,6 +11,7 @@ Shader "Liquid/Liquid Rendering"
 		_FluidDensity("Fluid Density",Range(0,1)) = 1
 		_AttennuationConstant("Attennuation Constant",Float) = 1
 		_ReflectionConstant("Reflection Constant",Float) = 0
+		[Toggle(SOLID_PARTICLES)] _SolidParticles("Solid Particles", Float) = 0
 	}
 	SubShader
 	{
@@ -21,6 +22,7 @@ Shader "Liquid/Liquid Rendering"
 		Pass
 		{
 			CGPROGRAM
+			#pragma shader_feature SOLID_PARTICLES
 			#pragma vertex vertexShader
 			#pragma fragment fragmentShader
 
@@ -110,10 +112,6 @@ Shader "Liquid/Liquid Rendering"
 				const float fresnelPower = 5.0;
 				const float F = ((1.0 - eta) * (1.0 - eta)) / ((1.0 + eta) * (1.0 + eta));
 
-				/*const float k_r = 0.8f;
-				const float k_g = 0.2f;
-				const float k_b = 0.9f;*/
-
 				//Compute vectors
 				float3 viewPos = viewSpacePosAtPixelPosition(i.vertex.xy);
 				viewPos.z = -viewPos.z;
@@ -130,6 +128,12 @@ Shader "Liquid/Liquid Rendering"
 				float specular = pow(max(0.0f, dot(H, worldNormal)), _Specular) * _LightColor0;
 				float diffuse = max(0.0f, dot(lightDir, worldNormal)) * _LightColor0;
 
+
+				#ifdef SOLID_PARTICLES
+				float3 finalColor = diffuse + unity_AmbientSky.rgb * tex2D(_MainTex, uv);
+
+				return float4(finalColor, 1);
+				#else
 				//Get liquid data
 				float thickness = saturate(liquidData.g / (1/_FluidDensity));
 				float4 color = tex2D(_MainTex, uv);
@@ -153,6 +157,8 @@ Shader "Liquid/Liquid Rendering"
 				float3 finalColor = (lerp(refractionColor, reflectionColor, fresnelRatio) + specular);
 
 				return float4(finalColor, thickness);
+				#endif
+				
 			}
 			ENDCG
 		}

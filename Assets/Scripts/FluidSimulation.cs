@@ -12,15 +12,23 @@ public class FluidSimulation : MonoBehaviour
     [Space]
     public int maxParticles = 100000;
     public Vector3 volume;
-    [Range(0.01f,1)] public float particleRadius = 0.05f;
-    [Range(1, 10)] public float particleElasticity = 5;
+    [Range(0.01f, 1)] public float particleVisualRadius = 0.05f;
+    [Range(1, 100)] public float particleElasticity = 5;
     [Space]
-    [Range(0, 10)] public float simulationSpeed = 1;
+    
 
+    [Header("Simulation Settings")]
+    [Header("World")]
+    [Range(0, 10)] public float simulationSpeed = 1;
     public Vector3 gravity = new Vector3(0, -9.81f, 0);
     [Range(0, 100)] public float spring = 1;
+    [Range(0.01f, 1)] public float particleRadius = 0.05f;
+    [Header("Density")]
     public float density = 1;
-    public float k = 0.1f;
+    public float stiffness = 0.1f;
+    [Header("Viscosity")]
+    public float omega = 1;
+    public float beta = 0.1f;
 
     private Material particleMaterial;
     private ComputeBuffer positionBuffer;
@@ -34,6 +42,7 @@ public class FluidSimulation : MonoBehaviour
 
 
     private int gravityKernel;
+    private int viscosityKernel;
     private int movementKernel;
     private int relaxationKernel;
     private int finalVelKernel;
@@ -60,14 +69,12 @@ public class FluidSimulation : MonoBehaviour
     private Vector4[] colorArray;
 
     private void Setup() {
-        Mesh mesh = CreateQuad(particleRadius, particleRadius);
+        Mesh mesh = CreateQuad(1, 1);
         this.mesh = mesh;
 
         // Boundary surrounding the meshes we will be drawing.  Used for occlusion.
         bounds = new Bounds(transform.position, volume*2);
         particleMaterial = new Material(Shader.Find("Hidden/Fluid Particle"));
-        particleMaterial.SetFloat("_ParticleRadius", particleRadius);
-        particleMaterial.SetFloat("_Elasticity", particleElasticity);
 
         InitializeBuffers();
     }
@@ -80,8 +87,45 @@ public class FluidSimulation : MonoBehaviour
         updateCompute.SetBuffer(kernel, "ParticlesCol", colorBuffer);
     }
 
+    public void ResetSimulation()
+    {
+        // Initialize buffer with the given population.
+        positionArray = new Vector3[maxParticles];
+        oldPositionArray = new Vector3[maxParticles];
+        velocityArray = new Vector3[maxParticles];
+        colorArray = new Vector4[maxParticles];
+
+        for (int i = 0; i < maxParticles; i++)
+        {
+            Vector3 position = new Vector3(Random.Range(0, volume.x), Random.Range(0, volume.y), Random.Range(0, volume.z));
+
+            Vector3 velocity = Vector3.zero;
+            //props.color = Color.Lerp(Color.red, Color.blue, Random.value);
+
+            Vector3 pos = position + volume;
+            pos.x /= volume.x * 2;
+            pos.y /= volume.y * 2;
+            pos.z /= volume.z * 2;
+
+            Vector4 color = initialColors.GetPixel((int)(pos.x * initialColors.width),
+                (int)(pos.y * initialColors.height),
+                (int)(pos.z * initialColors.depth));
+
+            positionArray[i] = position;
+            oldPositionArray[i] = position;
+            velocityArray[i] = velocity;
+            colorArray[i] = color;
+        }
+
+        positionBuffer.SetData(positionArray);
+        oldPositionBuffer.SetData(oldPositionArray);
+        velocityBuffer.SetData(velocityArray);
+        colorBuffer.SetData(colorArray);
+    }
+
     private void InitializeBuffers() {
         gravityKernel = updateCompute.FindKernel("ApplyGravity");
+        viscosityKernel = updateCompute.FindKernel("ApplyViscosity");
         movementKernel = updateCompute.FindKernel("ApplyMovement");
         relaxationKernel = updateCompute.FindKernel("DoubleRelaxation");
         finalVelKernel = updateCompute.FindKernel("UpdateFinalVel");
@@ -95,52 +139,24 @@ public class FluidSimulation : MonoBehaviour
         argsBuffer = new ComputeBuffer(1, args.Length * sizeof(uint), ComputeBufferType.IndirectArguments);
         argsBuffer.SetData(args);
 
-        // Initialize buffer with the given population.
-        positionArray = new Vector3[maxParticles];
-        oldPositionArray = new Vector3[maxParticles];
-        velocityArray = new Vector3[maxParticles];
-        colorArray = new Vector4[maxParticles];
-
-        for (int i = 0; i < maxParticles; i++) {
-            Vector3 position = new Vector3(Random.Range(0, volume.x), Random.Range(0, volume.y),Random.Range(0, volume.z));
-            
-            Vector3 velocity = Vector3.zero;
-            //props.color = Color.Lerp(Color.red, Color.blue, Random.value);
-
-            Vector3 pos = position + volume;
-            pos.x /= volume.x * 2;
-            pos.y /= volume.y * 2;
-            pos.z /= volume.z * 2;
-
-            Vector4 color = initialColors.GetPixel((int)(pos.x * initialColors.width),
-                                                        (int)(pos.y * initialColors.height),
-                                                        (int)(pos.z * initialColors.depth));
-
-            positionArray[i] = position;
-            oldPositionArray[i] = position;
-            velocityArray[i] = velocity;
-            colorArray[i] = color;
-        }
-
         positionBuffer = new ComputeBuffer(maxParticles, sizeof(float)*3);
         oldPositionBuffer = new ComputeBuffer(maxParticles, sizeof(float)*3);
         velocityBuffer = new ComputeBuffer(maxParticles, sizeof(float)*3);
         colorBuffer = new ComputeBuffer(maxParticles, sizeof(float) * 4);
 
-        positionBuffer.SetData(positionArray);
-        oldPositionBuffer.SetData(oldPositionArray);
-        velocityBuffer.SetData(velocityArray);
-        colorBuffer.SetData(colorArray);
+        ResetSimulation();
         
         updateCompute.SetVector("volume",volume);
         updateCompute.SetInt("particleCount",maxParticles);
 
         SetKernelBuffers(gravityKernel);
+        SetKernelBuffers(viscosityKernel);
         SetKernelBuffers(movementKernel);
         SetKernelBuffers(relaxationKernel);
         SetKernelBuffers(finalVelKernel);
 
         particleMaterial.SetBuffer("ParticlesPos", positionBuffer);
+        particleMaterial.SetBuffer("ParticlesOldPos", oldPositionBuffer);
         particleMaterial.SetBuffer("ParticlesVel", velocityBuffer);
         particleMaterial.SetBuffer("ParticlesCol", colorBuffer);
     }
@@ -184,12 +200,15 @@ public class FluidSimulation : MonoBehaviour
 
         updateCompute.SetVector("gravity",gravity);
         updateCompute.SetFloat("particleRadius", (particleRadius*2)*(particleRadius*2));
-        updateCompute.SetFloat("k",k);
+        updateCompute.SetFloat("stiffness", stiffness);
         updateCompute.SetFloat("density",density);
+        updateCompute.SetFloat("omega",omega);
+        updateCompute.SetFloat("beta", beta);
         updateCompute.SetFloat("springForce", spring);
         updateCompute.SetFloat("timeDelta",Time.fixedDeltaTime/(1/ simulationSpeed));
 
         updateCompute.Dispatch(gravityKernel, Mathf.CeilToInt(maxParticles / 64f), 1, 1);
+        updateCompute.Dispatch(viscosityKernel, Mathf.CeilToInt(maxParticles / 64f), 1, 1);
         updateCompute.Dispatch(movementKernel, Mathf.CeilToInt(maxParticles / 64f), 1, 1);
         updateCompute.Dispatch(relaxationKernel, Mathf.CeilToInt(maxParticles / 64f), 1, 1);
         updateCompute.Dispatch(finalVelKernel, Mathf.CeilToInt(maxParticles / 64f), 1, 1);
@@ -197,6 +216,12 @@ public class FluidSimulation : MonoBehaviour
 
     private void Update()
     {
+        if(Input.GetKeyDown(KeyCode.R))
+            ResetSimulation();
+
+        particleMaterial.SetFloat("_ParticleRadius", particleVisualRadius);
+        particleMaterial.SetFloat("_Elasticity", particleElasticity);
+
         Graphics.DrawMeshInstancedIndirect(mesh, 0, particleMaterial, bounds, argsBuffer, 0, null, ShadowCastingMode.On, false, gameObject.layer);
     }
 
@@ -211,5 +236,11 @@ public class FluidSimulation : MonoBehaviour
             argsBuffer.Release();
         }
         argsBuffer = null;
+    }
+
+    private void OnDrawGizmos()
+    {
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireCube(transform.position,volume*2);
     }
 }

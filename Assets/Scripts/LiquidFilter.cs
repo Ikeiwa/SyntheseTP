@@ -6,7 +6,7 @@ using UnityEngine.Experimental.Rendering;
 public class LiquidFilter : MonoBehaviour
 {
     public Material filterMaterial;
-    public bool smoothRendering = true;
+    public bool liquidRendering = true;
     [HideInInspector] public RenderTexture bluredDepth;
     [HideInInspector] public RenderTexture backgroundTexture;
 
@@ -29,6 +29,11 @@ public class LiquidFilter : MonoBehaviour
         depthCopyMaterial = new Material(Shader.Find("Hidden/Compute Liquid Data"));
         blurMaterial = new Material(Shader.Find("Hidden/DepthBlur"));
 
+        if(!liquidRendering)
+            filterMaterial.EnableKeyword("SOLID_PARTICLES");
+        else
+            filterMaterial.DisableKeyword("SOLID_PARTICLES");
+
         cam = GetComponent<Camera>();
     }
 
@@ -37,7 +42,7 @@ public class LiquidFilter : MonoBehaviour
         RenderTexture tmpDepth = RenderTexture.GetTemporary(bluredDepth.width,bluredDepth.height,bluredDepth.depth,bluredDepth.graphicsFormat);
         Graphics.Blit(source, bluredDepth, depthCopyMaterial);
 
-        if (smoothRendering)
+        if (liquidRendering)
         {
             Graphics.Blit(bluredDepth, tmpDepth, blurMaterial);
             Graphics.Blit(tmpDepth, bluredDepth, blurMaterial);

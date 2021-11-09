@@ -1,4 +1,5 @@
 #pragma kernel ApplyGravity
+#pragma kernel ApplyViscosity
 #pragma kernel ApplyMovement
 #pragma kernel DoubleRelaxation
 #pragma kernel UpdateFinalVel
@@ -17,7 +18,9 @@ float time;
 float particleRadius;
 float3 gravity;
 float density;
-float k;
+float stiffness;
+float omega;
+float beta;
 float springForce;
 
 float SqrtLength(float3 vec)
@@ -32,6 +35,31 @@ void ApplyGravity (uint3 id : SV_DispatchThreadID) {
 }
 
 [numthreads(64,1,1)]
+void ApplyViscosity (uint3 id : SV_DispatchThreadID) {
+
+    float3 pos = ParticlesPos[id.x];
+
+    for(int j=0;j<particleCount;j++)
+    {
+        if(id.x < j)
+        {
+            float3 otherDir = ParticlesPos[j]-pos;
+	        float q = sqrt(SqrtLength(otherDir) / particleRadius);
+	        if(q<1)
+	        {
+                float u = dot(ParticlesVel[id.x]-ParticlesVel[j],normalize(otherDir));
+                if(u > 0)
+                {
+	                float3 I = timeDelta * (1 - q) * (omega*u + beta*(u*u))*normalize(otherDir);
+                    ParticlesVel[id.x] -= I/2.0f;
+                    ParticlesVel[j] += I/2.0f;
+                }
+	        } 
+        }
+    }
+}
+
+[numthreads(64,1,1)]
 void ApplyMovement (uint3 id : SV_DispatchThreadID) {
 
     float3 pos = ParticlesPos[id.x];
@@ -39,11 +67,7 @@ void ApplyMovement (uint3 id : SV_DispatchThreadID) {
     ParticlesOldPos[id.x] = pos;
     pos += ParticlesVel[id.x]*timeDelta;
 
-    //float3 clipDir = normalize(pos - volume);
-
-    float3 clipDir = min(max(pos - volume,-1),1);
-
-
+    float3 clipDir = sign(pos - volume);
     float3 clipForce = max(abs(pos)-volume,0);
 
     //pos -= clipDir*clipForce * springForce * timeDelta*timeDelta;
@@ -71,14 +95,14 @@ void DoubleRelaxation (uint3 id : SV_DispatchThreadID) {
         }
     }
 
-    float P = k*(p-density);
+    float P = stiffness*(p-density);
     float3 dx = 0;
 
     for(int i=0;i<particleCount;i++)
     {
         if(id.x != i)
         {
-	       float3 otherDir = ParticlesPos[i]-pos;
+	        float3 otherDir = ParticlesPos[i]-pos;
 	        float q = sqrt(SqrtLength(otherDir) / particleRadius);
 	        if(q<1)
 	        {

@@ -41,6 +41,7 @@ Material:
     - _Reflectance: 0
     - _ReflectionConstant: 0
     - _Refractance: 0.133
+    - _SolidParticles: 0
     - _Specular: 14.2
     m_Colors: []
   m_BuildTextureStacks: []
