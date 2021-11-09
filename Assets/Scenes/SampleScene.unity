@@ -158,12 +158,14 @@ MonoBehaviour:
   volume: {x: 3, y: 3, z: 3}
   particleVisualRadius: 0.13
   particleElasticity: 100
-  particleRadius: 0.2
   simulationSpeed: 1
-  gravity: {x: 0, y: -1, z: 0}
+  gravity: {x: 0, y: -2, z: 0}
   spring: 20
+  particleRadius: 0.2
   density: 3
-  k: 3
+  stiffness: 3
+  omega: 1
+  beta: 0.1
 --- !u!4 &246213679
 Transform:
   m_ObjectHideFlags: 0
@@ -483,7 +485,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6b1a6ea746078164d8dc761504792dfc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  filterMaterial: {fileID: 2100000, guid: 665d186a467d519479452772ee6cae95, type: 2}
+  filterMaterial: {fileID: 2100000, guid: c7c77ec17f5648e42b8d66596c5806f2, type: 2}
   liquidRendering: 1
   bluredDepth: {fileID: 0}
   backgroundTexture: {fileID: 0}

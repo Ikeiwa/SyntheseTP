@@ -1,3 +1,5 @@
+#pragma kernel HashParticles
+
 #pragma kernel ApplyGravity
 #pragma kernel ApplyViscosity
 #pragma kernel ApplyMovement
@@ -23,9 +25,28 @@ float omega;
 float beta;
 float springForce;
 
+uint GetHash(int x, int y, int z)
+{
+	return (x*73856093 ^ y*19349663 ^ z*83492791) % 64;
+}
+
+[numthreads(64,1,1)]
+void HashParticles (uint3 id : SV_DispatchThreadID) {
+    
+
+}
+
+
 float SqrtLength(float3 vec)
 {
 	return vec.x*vec.x + vec.y*vec.y + vec.z*vec.z;
+}
+
+float3 ClampPosition(float3 pos)
+{
+	float3 clipDir = sign(pos - volume);
+    float3 clipForce = max(abs(pos)-volume,0);
+    return pos - clipDir*clipForce*2;
 }
 
 [numthreads(64,1,1)]
@@ -67,12 +88,7 @@ void ApplyMovement (uint3 id : SV_DispatchThreadID) {
     ParticlesOldPos[id.x] = pos;
     pos += ParticlesVel[id.x]*timeDelta;
 
-    float3 clipDir = sign(pos - volume);
-    float3 clipForce = max(abs(pos)-volume,0);
-
-    //pos -= clipDir*clipForce * springForce * timeDelta*timeDelta;
-    pos -= clipDir*clipForce*2;
-    ParticlesPos[id.x] = pos;
+    ParticlesPos[id.x] = ClampPosition(pos);
 }
 
 [numthreads(64,1,1)]
